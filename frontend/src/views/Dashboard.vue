@@ -45,40 +45,42 @@ function formatCurrency(value: number): string {
 
 <template>
   <div class="space-y-6">
-    <div class="flex items-center justify-between">
-      <h1 class="text-2xl font-bold text-gray-900">Dashboard</h1>
+    <div
+      class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+    >
+      <h1 class="text-xl sm:text-2xl font-bold text-gray-900">Dashboard</h1>
 
-      <div class="flex items-center space-x-3">
+      <div class="flex items-center space-x-2 sm:space-x-3">
         <button
           v-if="botStore.isStopped"
           @click="handleStart"
           :disabled="botStore.isLoading"
-          class="btn btn-success flex items-center"
+          class="btn btn-success flex items-center text-xs sm:text-sm py-2 px-3 sm:py-2.5 sm:px-4"
         >
-          <Play class="h-4 w-4 mr-2" />
-          Pornește Bot
+          <Play class="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+          <span class="hidden xs:inline">Pornește</span> Bot
         </button>
 
         <button
           v-if="botStore.isRunning"
           @click="handleStop"
           :disabled="botStore.isLoading"
-          class="btn btn-danger flex items-center"
+          class="btn btn-danger flex items-center text-xs sm:text-sm py-2 px-3 sm:py-2.5 sm:px-4"
         >
-          <Square class="h-4 w-4 mr-2" />
-          Oprește Bot
+          <Square class="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+          <span class="hidden xs:inline">Oprește</span> Bot
         </button>
 
         <button
           @click="handleRunNow"
           :disabled="botStore.isLoading || !botStore.isRunning"
-          class="btn btn-primary flex items-center"
+          class="btn btn-primary flex items-center text-xs sm:text-sm py-2 px-3 sm:py-2.5 sm:px-4"
         >
           <RefreshCw
-            class="h-4 w-4 mr-2"
+            class="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2"
             :class="{ 'animate-spin': botStore.isLoading }"
           />
-          Execută Acum
+          <span class="hidden xs:inline">Execută</span> Acum
         </button>
       </div>
     </div>
