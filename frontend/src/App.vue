@@ -78,11 +78,11 @@ const navItems = [
           class="flex flex-col lg:flex-row lg:justify-between py-2 lg:py-0 lg:h-16"
         >
           <div
-            class="flex items-center justify-center lg:justify-start py-2 lg:py-0"
+            class="flex flex-col sm:flex-row items-center justify-center lg:justify-start py-2 lg:py-0"
           >
             <img src="/logo.png" alt="Logo" class="h-8 lg:h-10 w-auto" />
             <span
-              class="ml-3 text-gray-700 font-medium text-sm lg:text-base hidden sm:inline"
+              class="sm:ml-3 mt-1 sm:mt-0 text-gray-700 font-medium text-xs sm:text-sm lg:text-base"
             >
               Strategie automatizată 24/7
             </span>
