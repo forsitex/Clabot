@@ -132,7 +132,7 @@ class GoogleSheetsClient:
             headers = ["id", "name", "betfair_id", "sport", "league", "country",
                       "cumulative_loss", "last_stake", "progression_step", "status",
                       "created_at", "updated_at"]
-            worksheet = self._get_or_create_worksheet("Echipe", headers)
+            worksheet = self._get_or_create_worksheet("Index", headers)
 
             records = worksheet.get_all_records()
             teams = []
@@ -164,6 +164,7 @@ class GoogleSheetsClient:
     def save_team(self, team: Dict[str, Any]) -> bool:
         """
         Salvează sau actualizează o echipă în Google Sheets.
+        Creează și un sheet separat pentru echipă.
 
         Args:
             team: Datele echipei
@@ -176,10 +177,11 @@ class GoogleSheetsClient:
             return False
 
         try:
+            # Save to Index sheet
             headers = ["id", "name", "betfair_id", "sport", "league", "country",
                       "cumulative_loss", "last_stake", "progression_step", "status",
                       "created_at", "updated_at"]
-            worksheet = self._get_or_create_worksheet("Echipe", headers)
+            worksheet = self._get_or_create_worksheet("Index", headers)
 
             cell = worksheet.find(team["id"])
 
@@ -204,6 +206,9 @@ class GoogleSheetsClient:
             else:
                 worksheet.append_row(row_data)
 
+            # Create separate sheet for team
+            self._create_team_sheet(team["name"])
+
             logger.info(f"Echipă salvată: {team['name']}")
             return True
 
@@ -211,13 +216,148 @@ class GoogleSheetsClient:
             logger.error(f"Eroare la salvarea echipei: {e}")
             return False
 
+    def _create_team_sheet(self, team_name: str) -> Any:
+        """Creează un sheet separat pentru o echipă."""
+        try:
+            # Check if sheet exists
+            try:
+                worksheet = self._spreadsheet.worksheet(team_name)
+                logger.info(f"Sheet '{team_name}' există deja")
+                return worksheet
+            except:
+                pass
+
+            # Create new sheet with headers
+            headers = ["Data", "Meci", "Competiție", "Cotă", "Miză", "Status", "Profit", "Bet ID"]
+            worksheet = self._spreadsheet.add_worksheet(title=team_name, rows=100, cols=len(headers))
+            worksheet.append_row(headers)
+
+            # Add progression info in first data row (will be updated)
+            worksheet.append_row(["--- PROGRESIE ---", "Pierdere Cumulată: 0", "Pas: 0", "Ultima Miză: 100", "", "", "", ""])
+
+            logger.info(f"Sheet creat pentru echipa: {team_name}")
+            return worksheet
+
+        except Exception as e:
+            logger.error(f"Eroare la crearea sheet-ului pentru {team_name}: {e}")
+            return None
+
+    def save_matches_for_team(self, team_name: str, matches: List[Dict[str, Any]]) -> bool:
+        """
+        Salvează meciurile programate în sheet-ul echipei.
+
+        Args:
+            team_name: Numele echipei
+            matches: Lista de meciuri de salvat
+
+        Returns:
+            True dacă salvarea a reușit
+        """
+        if not self._connected:
+            return False
+
+        try:
+            worksheet = self._spreadsheet.worksheet(team_name)
+
+            for match in matches:
+                # Check if match already exists (by event_name)
+                try:
+                    cell = worksheet.find(match.get("event_name", ""))
+                    if cell:
+                        continue  # Skip existing match
+                except:
+                    pass
+
+                row_data = [
+                    match.get("start_time", ""),
+                    match.get("event_name", ""),
+                    match.get("competition", ""),
+                    match.get("odds", ""),
+                    "",  # Miză - se completează la plasare
+                    "PROGRAMAT",
+                    "",  # Profit
+                    ""   # Bet ID
+                ]
+                worksheet.append_row(row_data)
+
+            logger.info(f"Salvate {len(matches)} meciuri pentru {team_name}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Eroare la salvarea meciurilor pentru {team_name}: {e}")
+            return False
+
+    def update_team_progression(self, team_name: str, cumulative_loss: float, step: int, last_stake: float) -> bool:
+        """Actualizează progresia în sheet-ul echipei."""
+        if not self._connected:
+            return False
+
+        try:
+            worksheet = self._spreadsheet.worksheet(team_name)
+            # Update row 2 (progression info)
+            worksheet.update("A2:D2", [[
+                "--- PROGRESIE ---",
+                f"Pierdere Cumulată: {cumulative_loss}",
+                f"Pas: {step}",
+                f"Ultima Miză: {last_stake}"
+            ]])
+            return True
+        except Exception as e:
+            logger.error(f"Eroare la actualizarea progresiei pentru {team_name}: {e}")
+            return False
+
+    def update_match_status(self, team_name: str, event_name: str, status: str, stake: float = None, profit: float = None, bet_id: str = None) -> bool:
+        """Actualizează statusul unui meci în sheet-ul echipei."""
+        if not self._connected:
+            return False
+
+        try:
+            worksheet = self._spreadsheet.worksheet(team_name)
+            cell = worksheet.find(event_name)
+
+            if cell:
+                row = cell.row
+                if stake is not None:
+                    worksheet.update_cell(row, 5, stake)  # Miză
+                worksheet.update_cell(row, 6, status)  # Status
+                if profit is not None:
+                    worksheet.update_cell(row, 7, profit)  # Profit
+                if bet_id:
+                    worksheet.update_cell(row, 8, bet_id)  # Bet ID
+                return True
+            return False
+
+        except Exception as e:
+            logger.error(f"Eroare la actualizarea meciului {event_name}: {e}")
+            return False
+
+    def get_scheduled_matches(self, team_name: str) -> List[Dict[str, Any]]:
+        """Obține meciurile programate pentru o echipă."""
+        if not self._connected:
+            return []
+
+        try:
+            worksheet = self._spreadsheet.worksheet(team_name)
+            records = worksheet.get_all_records()
+
+            matches = []
+            for record in records:
+                if record.get("Status") == "PROGRAMAT":
+                    matches.append(record)
+
+            return matches
+
+        except Exception as e:
+            logger.error(f"Eroare la citirea meciurilor pentru {team_name}: {e}")
+            return []
+
     def delete_team(self, team_id: str) -> bool:
         """Șterge o echipă din Google Sheets."""
         if not self._connected:
             return False
 
         try:
-            worksheet = self._spreadsheet.worksheet("Echipe")
+            worksheet = self._spreadsheet.worksheet("Index")
             cell = worksheet.find(team_id)
 
             if cell:
