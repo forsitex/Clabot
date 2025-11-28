@@ -1,5 +1,6 @@
 import logging
 from typing import List, Dict, Any
+from datetime import datetime
 import anthropic
 
 from app.config import get_settings
@@ -7,9 +8,9 @@ from app.config import get_settings
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-SYSTEM_PROMPT = """Ești un expert în pariuri sportive, specializat în analiza meciurilor de fotbal și baschet.
+SYSTEM_PROMPT = f"""Ești un expert în pariuri sportive, specializat în analiza meciurilor de fotbal și baschet.
 
-DATA CURENTĂ: Noiembrie 2025. Sezonul 2024-2025 este în desfășurare.
+DATA CURENTĂ: {datetime.now().strftime('%d %B %Y')}. Sezonul 2024-2025 este în desfășurare.
 
 Rolul tău este să ajuți utilizatorul cu:
 - Analiză meciuri și pronosticuri
@@ -17,13 +18,15 @@ Rolul tău este să ajuți utilizatorul cu:
 - Statistici și forme ale echipelor
 - Strategii de pariere
 
+AI ACCES LA DATE LIVE: Poți accesa date live de pe Betfair Exchange. Când utilizatorul întreabă despre meciuri, vei primi automat lista de meciuri disponibile cu cote live.
+
 Răspunde întotdeauna în limba română.
 Fii concis dar informativ.
 Oferă analize obiective bazate pe date și statistici.
 Nu garanta niciodată rezultate - pariurile implică risc.
 Când analizezi un meci, menționează: forma recentă, confruntări directe, absențe importante, motivație.
 
-IMPORTANT: Dacă nu ai informații actualizate despre un meci specific, spune clar că ai nevoie de date mai recente și oferă o analiză generală bazată pe istoricul echipelor."""
+Când primești date live de la Betfair, folosește-le pentru a oferi analize actualizate cu cotele reale."""
 
 
 class AIChat:
@@ -106,6 +109,127 @@ Oferă:
             full_message = f"{message}\n{context}"
 
         return await self.chat(full_message)
+
+    async def fetch_betfair_matches(self, sport: str = "football", search_query: str = None) -> List[Dict[str, Any]]:
+        """Preia meciuri live de pe Betfair."""
+        from app.services.betfair_client import betfair_client
+
+        matches = []
+
+        try:
+            if not betfair_client.is_connected():
+                logger.warning("Betfair client not connected, attempting to connect...")
+                connected = await betfair_client.connect()
+                if not connected:
+                    logger.error("Failed to connect to Betfair")
+                    return []
+
+            # Get event type ID
+            event_type_id = "1" if sport.lower() == "football" else "7522"
+
+            # List events
+            events = await betfair_client.list_events(
+                event_type_id=event_type_id,
+                text_query=search_query
+            )
+
+            if not events:
+                return []
+
+            # Get event IDs
+            event_ids = [e.get("event", {}).get("id") for e in events[:20] if e.get("event")]
+
+            if not event_ids:
+                return []
+
+            # Get market catalogue
+            markets = await betfair_client.list_market_catalogue(event_ids)
+
+            if not markets:
+                return []
+
+            # Get market IDs for prices
+            market_ids = [m.get("marketId") for m in markets[:20] if m.get("marketId")]
+
+            # Get prices
+            market_books = await betfair_client.list_market_book(market_ids) if market_ids else []
+
+            # Build price lookup
+            price_lookup = {}
+            for book in market_books:
+                market_id = book.get("marketId")
+                runners = book.get("runners", [])
+                if len(runners) >= 2:
+                    prices = {}
+                    for runner in runners:
+                        back_prices = runner.get("ex", {}).get("availableToBack", [])
+                        if back_prices:
+                            prices[runner.get("selectionId")] = back_prices[0].get("price", 0)
+                    price_lookup[market_id] = prices
+
+            # Combine data
+            for market in markets:
+                event = market.get("event", {})
+                runners = market.get("runners", [])
+                market_id = market.get("marketId")
+
+                if len(runners) >= 2:
+                    match_data = {
+                        "event_id": event.get("id"),
+                        "event_name": event.get("name", ""),
+                        "competition": market.get("competition", {}).get("name", ""),
+                        "start_time": market.get("marketStartTime", ""),
+                        "market_id": market_id,
+                        "home_team": runners[0].get("runnerName", ""),
+                        "away_team": runners[1].get("runnerName", "") if len(runners) > 1 else "",
+                    }
+
+                    # Add prices if available
+                    if market_id in price_lookup:
+                        prices = price_lookup[market_id]
+                        for i, runner in enumerate(runners[:3]):
+                            selection_id = runner.get("selectionId")
+                            if selection_id in prices:
+                                if i == 0:
+                                    match_data["home_odds"] = prices[selection_id]
+                                elif i == 1:
+                                    match_data["away_odds"] = prices[selection_id]
+                                elif i == 2:
+                                    match_data["draw_odds"] = prices[selection_id]
+
+                    matches.append(match_data)
+
+            logger.info(f"Fetched {len(matches)} matches from Betfair")
+            return matches
+
+        except Exception as e:
+            logger.error(f"Error fetching Betfair matches: {e}")
+            return []
+
+    async def chat_with_betfair(self, message: str, fetch_matches: bool = True) -> str:
+        """Chat cu date live de pe Betfair."""
+        matches_data = []
+
+        if fetch_matches:
+            # Detect if user is asking about specific sport or team
+            message_lower = message.lower()
+            sport = "football"
+            search_query = None
+
+            if "baschet" in message_lower or "basketball" in message_lower or "nba" in message_lower:
+                sport = "basketball"
+
+            # Try to extract team name for search
+            keywords_to_remove = ["analizeaza", "analizează", "meci", "meciuri", "azi", "maine",
+                                  "fotbal", "baschet", "cote", "pariere", "ce", "care", "sunt"]
+            words = message_lower.split()
+            potential_teams = [w for w in words if w not in keywords_to_remove and len(w) > 3]
+            if potential_teams:
+                search_query = potential_teams[0]
+
+            matches_data = await self.fetch_betfair_matches(sport=sport, search_query=search_query)
+
+        return await self.chat_with_context(message, matches_data)
 
 
 ai_chat = AIChat()

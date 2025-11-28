@@ -380,6 +380,7 @@ from app.services.ai_chat import ai_chat
 
 class ChatRequest(BaseModel):
     message: str
+    use_betfair: bool = True
 
 
 class ChatResponse(BaseModel):
@@ -388,8 +389,11 @@ class ChatResponse(BaseModel):
 
 @router.post("/ai/chat", response_model=ChatResponse)
 async def ai_chat_endpoint(request: ChatRequest):
-    """Trimite un mesaj către AI și primește răspuns."""
-    response = await ai_chat.chat(request.message)
+    """Trimite un mesaj către AI și primește răspuns cu date live de pe Betfair."""
+    if request.use_betfair:
+        response = await ai_chat.chat_with_betfair(request.message)
+    else:
+        response = await ai_chat.chat(request.message)
     return ChatResponse(response=response)
 
 
