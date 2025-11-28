@@ -112,7 +112,14 @@ class BetfairClient:
             if self._cert_path and self._key_path:
                 cert = (self._cert_path, self._key_path)
 
-            async with httpx.AsyncClient(cert=cert) as client:
+            # Check for proxy configuration
+            proxy_url = os.environ.get("BETFAIR_PROXY_URL")
+            proxies = proxy_url if proxy_url else None
+
+            if proxies:
+                logger.info(f"Using proxy: {proxy_url}")
+
+            async with httpx.AsyncClient(cert=cert, proxy=proxies) as client:
                 response = await client.post(
                     self.IDENTITY_URL,
                     headers={"X-Application": self._app_key},
@@ -127,7 +134,9 @@ class BetfairClient:
                 if result.get("loginStatus") == "SUCCESS":
                     self._session_token = result.get("sessionToken")
                     self._connected = True
-                    self._http_client = httpx.AsyncClient()
+                    # Store proxy for future requests
+                    self._proxy_url = proxies
+                    self._http_client = httpx.AsyncClient(proxy=proxies)
                     logger.info("Autentificat la Betfair API")
                     return True
                 else:
