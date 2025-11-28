@@ -477,3 +477,24 @@ class BetfairClient:
 
 
 betfair_client = BetfairClient()
+
+# Auto-configure from environment variables at startup
+def auto_configure_betfair():
+    """Auto-configure Betfair client from environment variables."""
+    from app.config import get_settings
+    settings = get_settings()
+
+    if settings.betfair_app_key and settings.betfair_username and settings.betfair_password:
+        betfair_client.configure(
+            app_key=settings.betfair_app_key,
+            username=settings.betfair_username,
+            password=settings.betfair_password,
+            cert_path=settings.betfair_cert_path,
+            key_path=settings.betfair_key_path
+        )
+        logger.info("Betfair client auto-configured from environment variables")
+    else:
+        logger.warning("Betfair credentials not found in environment variables")
+
+# Run auto-configure
+auto_configure_betfair()

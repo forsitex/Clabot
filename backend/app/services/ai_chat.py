@@ -221,13 +221,21 @@ Oferă:
 
             # Try to extract team name for search
             keywords_to_remove = ["analizeaza", "analizează", "meci", "meciuri", "azi", "maine",
-                                  "fotbal", "baschet", "cote", "pariere", "ce", "care", "sunt"]
+                                  "fotbal", "baschet", "cote", "pariere", "ce", "care", "sunt",
+                                  "urmatoarele", "următoarele", "lui", "echipa", "echipei"]
             words = message_lower.split()
             potential_teams = [w for w in words if w not in keywords_to_remove and len(w) > 3]
             if potential_teams:
                 search_query = potential_teams[0]
 
+            logger.info(f"Fetching Betfair matches - sport: {sport}, search: {search_query}")
             matches_data = await self.fetch_betfair_matches(sport=sport, search_query=search_query)
+            logger.info(f"Got {len(matches_data)} matches from Betfair")
+
+        # If no matches found, add explicit warning to context
+        if not matches_data:
+            no_data_warning = "\n\n⚠️ ATENȚIE: Nu am putut obține date live de pe Betfair. NU INVENTA meciuri sau cote! Spune utilizatorului că nu ai acces la date în acest moment și oferă doar informații generale bazate pe cunoștințele tale."
+            return await self.chat(message + no_data_warning)
 
         return await self.chat_with_context(message, matches_data)
 
