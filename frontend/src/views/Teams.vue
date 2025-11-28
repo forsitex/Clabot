@@ -20,14 +20,9 @@ const expandedTeam = ref<string | null>(null);
 const newTeam = ref<TeamCreate>({
   name: "",
   sport: "football",
-  league: "",
+  league: "Auto",
   country: "",
 });
-
-const sportOptions = [
-  { value: "football", label: "Fotbal" },
-  { value: "basketball", label: "Baschet" },
-];
 
 onMounted(() => {
   teamsStore.fetchTeams();
@@ -42,13 +37,13 @@ const sortedTeams = computed(() => {
 });
 
 async function handleAddTeam(): Promise<void> {
-  if (!newTeam.value.name || !newTeam.value.league || !newTeam.value.country) {
+  if (!newTeam.value.name || !newTeam.value.country) {
     return;
   }
 
   await teamsStore.createTeam(newTeam.value);
 
-  newTeam.value = { name: "", sport: "football", league: "", country: "" };
+  newTeam.value = { name: "", sport: "football", league: "Auto", country: "" };
   showAddForm.value = false;
 }
 
@@ -116,31 +111,7 @@ function formatCurrency(value: number): string {
             v-model="newTeam.name"
             type="text"
             class="input"
-            placeholder="ex: Liverpool"
-            required
-          />
-        </div>
-
-        <div>
-          <label class="label">Sport</label>
-          <select v-model="newTeam.sport" class="input">
-            <option
-              v-for="opt in sportOptions"
-              :key="opt.value"
-              :value="opt.value"
-            >
-              {{ opt.label }}
-            </option>
-          </select>
-        </div>
-
-        <div>
-          <label class="label">Ligă</label>
-          <input
-            v-model="newTeam.league"
-            type="text"
-            class="input"
-            placeholder="ex: Premier League"
+            placeholder="ex: Real Madrid"
             required
           />
         </div>
@@ -151,7 +122,7 @@ function formatCurrency(value: number): string {
             v-model="newTeam.country"
             type="text"
             class="input"
-            placeholder="ex: Anglia"
+            placeholder="ex: Spania"
             required
           />
         </div>
