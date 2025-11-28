@@ -1,15 +1,29 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted } from "vue";
-import { RouterView, RouterLink, useRoute } from "vue-router";
-import { LayoutDashboard, Users, History, Settings } from "lucide-vue-next";
+import { onMounted, onUnmounted, computed } from "vue";
+import { RouterView, RouterLink, useRoute, useRouter } from "vue-router";
+import {
+  LayoutDashboard,
+  Users,
+  History,
+  Settings,
+  LogOut,
+} from "lucide-vue-next";
 import { useBotStore } from "@/stores/bot";
 import { useTeamsStore } from "@/stores/teams";
 import { useWebSocket } from "@/services/websocket";
 import type { WebSocketMessage } from "@/types";
 
 const route = useRoute();
+const router = useRouter();
 const botStore = useBotStore();
 const teamsStore = useTeamsStore();
+
+const isLoginPage = computed(() => route.path === "/login");
+
+function handleLogout(): void {
+  localStorage.removeItem("auth_token");
+  router.push("/login");
+}
 
 function handleWebSocketMessage(message: WebSocketMessage): void {
   switch (message.type) {
@@ -54,7 +68,10 @@ const navItems = [
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50">
+  <div v-if="isLoginPage">
+    <RouterView />
+  </div>
+  <div v-else class="min-h-screen bg-gray-50">
     <nav class="bg-white border-b border-gray-200 fixed w-full z-10">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div
@@ -64,6 +81,11 @@ const navItems = [
             class="flex items-center justify-center lg:justify-start py-2 lg:py-0"
           >
             <img src="/logo.png" alt="Logo" class="h-8 lg:h-10 w-auto" />
+            <span
+              class="ml-3 text-gray-700 font-medium text-sm lg:text-base hidden sm:inline"
+            >
+              Strategie automatizată 24/7
+            </span>
           </div>
 
           <div
@@ -107,6 +129,15 @@ const navItems = [
             >
               {{ botStore.state.status.toUpperCase() }}
             </div>
+
+            <button
+              @click="handleLogout"
+              class="flex items-center px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+              title="Deconectare"
+            >
+              <LogOut class="h-4 w-4 sm:h-5 sm:w-5" />
+              <span class="hidden sm:inline ml-1">Ieșire</span>
+            </button>
           </div>
         </div>
       </div>

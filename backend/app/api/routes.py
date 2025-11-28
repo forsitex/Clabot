@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from typing import List, Optional
 from uuid import uuid4
 from datetime import datetime
+from pydantic import BaseModel
 
 from app.models.schemas import (
     Team, TeamCreate, TeamUpdate, TeamStatus,
@@ -15,8 +16,35 @@ from app.services.staking import staking_service
 from app.services.settings_manager import settings_manager
 from app.services.google_sheets import google_sheets_client
 from app.services.betfair_client import betfair_client
+from app.services.auth import authenticate, get_current_user
 
 router = APIRouter()
+
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class LoginResponse(BaseModel):
+    success: bool
+    token: Optional[str] = None
+    message: str
+
+
+@router.post("/auth/login", response_model=LoginResponse)
+async def login(request: LoginRequest):
+    """Autentificare utilizator."""
+    token = authenticate(request.username, request.password)
+    if token:
+        return LoginResponse(success=True, token=token, message="Autentificare reușită")
+    return LoginResponse(success=False, message="Credențiale invalide")
+
+
+@router.get("/auth/verify")
+async def verify_auth(username: str = Depends(get_current_user)):
+    """Verifică dacă token-ul este valid."""
+    return {"valid": True, "username": username}
 
 
 @router.get("/health")

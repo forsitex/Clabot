@@ -34,6 +34,11 @@ class Settings(BaseSettings):
         description="Comma-separated list of allowed CORS origins"
     )
 
+    # Authentication
+    auth_username: str = Field(default="Doarazi", description="Dashboard username")
+    auth_password: str = Field(default="Cascaval2026!", description="Dashboard password")
+    jwt_secret: str = Field(default="betfair-bot-secret-key-change-in-production", description="JWT Secret Key")
+
     @property
     def cors_origins_list(self) -> List[str]:
         return [origin.strip() for origin in self.cors_origins.split(",")]
