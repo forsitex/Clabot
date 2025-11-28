@@ -120,7 +120,12 @@ async def get_team(team_id: str):
 
 @router.post("/teams", response_model=Team, status_code=status.HTTP_201_CREATED)
 async def create_team(team_create: TeamCreate):
-    """Creează o echipă nouă."""
+    """Creează o echipă nouă și preia următoarele 20 de meciuri."""
+    from app.services.google_sheets import google_sheets_client
+    from app.services.betfair_client import betfair_client
+    import logging
+    logger = logging.getLogger(__name__)
+
     team = Team(
         id=str(uuid4()),
         name=team_create.name,
@@ -135,7 +140,51 @@ async def create_team(team_create: TeamCreate):
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow()
     )
-    return bot_engine.add_team(team)
+
+    # Save to bot engine (memory)
+    result = bot_engine.add_team(team)
+
+    # Save to Google Sheets and fetch matches
+    if not google_sheets_client.is_connected():
+        google_sheets_client.connect()
+
+    if google_sheets_client.is_connected():
+        # Save team to Index sheet and create team sheet
+        google_sheets_client.save_team(team.model_dump())
+
+        # Fetch next 20 matches from Betfair
+        try:
+            if not betfair_client.is_connected():
+                await betfair_client.connect()
+
+            if betfair_client.is_connected():
+                # Search for team matches
+                event_type_id = "1" if team.sport == "football" else "7522"
+                events = await betfair_client.list_events(
+                    event_type_id=event_type_id,
+                    text_query=team.name
+                )
+
+                matches = []
+                for event in events[:20]:
+                    event_data = event.get("event", {})
+                    matches.append({
+                        "start_time": event.get("marketStartTime", ""),
+                        "event_name": event_data.get("name", ""),
+                        "competition": event.get("competitionName", ""),
+                        "odds": ""
+                    })
+
+                if matches:
+                    google_sheets_client.save_matches_for_team(team.name, matches)
+                    logger.info(f"Saved {len(matches)} matches for {team.name}")
+                else:
+                    logger.warning(f"No matches found for {team.name}")
+
+        except Exception as e:
+            logger.error(f"Error fetching matches for {team.name}: {e}")
+
+    return result
 
 
 @router.put("/teams/{team_id}", response_model=Team)
