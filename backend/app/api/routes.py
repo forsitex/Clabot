@@ -372,3 +372,29 @@ async def test_google_sheets_connection():
         return ApiResponse(success=True, message="Conectat la Google Sheets")
     else:
         return ApiResponse(success=False, message="Conexiune eșuată la Google Sheets")
+
+
+# AI Chat endpoints
+from app.services.ai_chat import ai_chat
+
+
+class ChatRequest(BaseModel):
+    message: str
+
+
+class ChatResponse(BaseModel):
+    response: str
+
+
+@router.post("/ai/chat", response_model=ChatResponse)
+async def ai_chat_endpoint(request: ChatRequest):
+    """Trimite un mesaj către AI și primește răspuns."""
+    response = await ai_chat.chat(request.message)
+    return ChatResponse(response=response)
+
+
+@router.post("/ai/clear")
+async def clear_ai_chat():
+    """Șterge istoricul conversației AI."""
+    ai_chat.clear_history()
+    return {"success": True, "message": "Istoric șters"}

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, computed } from "vue";
+import { ref, onMounted, onUnmounted, computed } from "vue";
 import { RouterView, RouterLink, useRoute, useRouter } from "vue-router";
 import {
   LayoutDashboard,
@@ -7,11 +7,13 @@ import {
   History,
   Settings,
   LogOut,
+  MessageCircle,
 } from "lucide-vue-next";
 import { useBotStore } from "@/stores/bot";
 import { useTeamsStore } from "@/stores/teams";
 import { useWebSocket } from "@/services/websocket";
 import type { WebSocketMessage } from "@/types";
+import AIChatModal from "@/components/AIChatModal.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -19,6 +21,7 @@ const botStore = useBotStore();
 const teamsStore = useTeamsStore();
 
 const isLoginPage = computed(() => route.path === "/login");
+const isChatOpen = ref(false);
 
 function handleLogout(): void {
   localStorage.removeItem("auth_token");
@@ -131,6 +134,15 @@ const navItems = [
             </div>
 
             <button
+              @click="isChatOpen = true"
+              class="flex items-center px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm font-medium text-purple-600 hover:bg-purple-50 transition-colors"
+              title="Asistent AI"
+            >
+              <MessageCircle class="h-4 w-4 sm:h-5 sm:w-5" />
+              <span class="hidden sm:inline ml-1">Ask AI</span>
+            </button>
+
+            <button
               @click="handleLogout"
               class="flex items-center px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
               title="Deconectare"
@@ -148,5 +160,7 @@ const navItems = [
         <RouterView />
       </div>
     </main>
+
+    <AIChatModal :isOpen="isChatOpen" @close="isChatOpen = false" />
   </div>
 </template>

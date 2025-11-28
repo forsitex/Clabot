@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     auth_password: str = Field(default="Cascaval2026!", description="Dashboard password")
     jwt_secret: str = Field(default="betfair-bot-secret-key-change-in-production", description="JWT Secret Key")
 
+    # Claude AI
+    anthropic_api_key: str = Field(default="", description="Anthropic API Key")
+
     @property
     def cors_origins_list(self) -> List[str]:
         return [origin.strip() for origin in self.cors_origins.split(",")]
