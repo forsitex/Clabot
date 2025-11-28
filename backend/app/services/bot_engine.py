@@ -326,13 +326,10 @@ class BotEngine:
         """
         Execută un ciclu complet al botului:
         1. Încarcă echipele din Google Sheets
-        2. Scanează meciurile pe Betfair
+        2. Verifică meciurile de azi
         3. Calculează mizele
         4. Plasează pariurile
         5. Actualizează Google Sheets
-
-        Returns:
-            Dict cu rezultatele ciclului
         """
         # Start bot if not running
         if self.state.status != BotStatus.RUNNING:
@@ -355,7 +352,7 @@ class BotEngine:
 
         try:
             from app.services.google_sheets import google_sheets_client
-            from app.services.staking import staking_service
+            from app.services.betfair_client import betfair_client
             from datetime import date
 
             # Connect to Google Sheets
@@ -375,16 +372,17 @@ class BotEngine:
                 results["message"] = "Nu există echipe în Google Sheets"
                 return results
 
-            if not self._betfair_client:
+            # Connect to Betfair
+            if not betfair_client.is_connected():
+                await betfair_client.connect()
+
+            if not betfair_client.is_connected():
                 results["success"] = False
-                results["message"] = "Clientul Betfair nu este configurat"
+                results["message"] = "Nu s-a putut conecta la Betfair"
                 return results
 
-            # Connect to Betfair
-            if not self._betfair_client.is_connected():
-                await self._betfair_client.connect()
-
             today = date.today().isoformat()
+            logger.info(f"Verificare meciuri pentru data: {today}")
 
             for team_data in teams_data:
                 team_name = team_data.get("name", "")
@@ -436,7 +434,7 @@ class BotEngine:
                         logger.info(f"Plasare pariu: {team_name} - {event_name} - Miză: {stake} @ {odds}")
 
                         # Find market on Betfair and place bet
-                        events = await self._betfair_client.list_events(
+                        events = await betfair_client.list_events(
                             event_type_id="1",
                             text_query=team_name
                         )
@@ -458,7 +456,7 @@ class BotEngine:
                             continue
 
                         # Get market
-                        markets = await self._betfair_client.list_market_catalogue(
+                        markets = await betfair_client.list_market_catalogue(
                             event_ids=[event_id],
                             market_type_codes=["MATCH_ODDS"]
                         )
@@ -479,7 +477,7 @@ class BotEngine:
                         selection_id = str(runners[0].get("selectionId", ""))
 
                         # Place bet
-                        place_result = await self._betfair_client.place_bet(
+                        place_result = await betfair_client.place_bet(
                             market_id=market_id,
                             selection_id=selection_id,
                             stake=stake,
