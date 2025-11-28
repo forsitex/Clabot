@@ -1,12 +1,16 @@
 import logging
+import os
 from contextlib import asynccontextmanager
 from datetime import datetime
+from pathlib import Path
 
 import pytz
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 from app.api.routes import router as api_router
 from app.api.websocket import websocket_endpoint, broadcast_bot_state, broadcast_notification
@@ -100,16 +104,29 @@ app.include_router(api_router, prefix="/api")
 app.add_api_websocket_route("/ws", websocket_endpoint)
 
 
-@app.get("/")
-async def root():
-    """Root endpoint."""
-    return {
-        "name": "Betfair Bot API",
-        "version": "1.0.0",
-        "status": "running",
-        "timestamp": datetime.utcnow().isoformat(),
-        "scheduled_run": f"{settings.bot_run_hour:02d}:{settings.bot_run_minute:02d} {settings.bot_timezone}"
-    }
+# Serve frontend static files in production
+frontend_dist = Path(__file__).parent.parent.parent.parent / "frontend" / "dist"
+if frontend_dist.exists():
+    app.mount("/assets", StaticFiles(directory=frontend_dist / "assets"), name="assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_frontend(full_path: str):
+        """Serve frontend for all non-API routes."""
+        file_path = frontend_dist / full_path
+        if file_path.exists() and file_path.is_file():
+            return FileResponse(file_path)
+        return FileResponse(frontend_dist / "index.html")
+else:
+    @app.get("/")
+    async def root():
+        """Root endpoint."""
+        return {
+            "name": "Betfair Bot API",
+            "version": "1.0.0",
+            "status": "running",
+            "timestamp": datetime.utcnow().isoformat(),
+            "scheduled_run": f"{settings.bot_run_hour:02d}:{settings.bot_run_minute:02d} {settings.bot_timezone}"
+        }
 
 
 if __name__ == "__main__":
