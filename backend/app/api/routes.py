@@ -173,12 +173,12 @@ async def create_team(team_create: TeamCreate):
                 for event in events[:20]:
                     event_data = event.get("event", {})
                     event_id = event_data.get("id", "")
-                    market_start_time = event.get("marketStartTime", "")
                     event_name = event_data.get("name", "")
                     competition = event.get("competitionName", "")
 
-                    # Get odds for this event (Match Odds market)
+                    # Get odds and start time from market catalogue
                     odds = ""
+                    market_start_time = ""
                     if event_id:
                         try:
                             markets = await betfair_client.list_market_catalogue(
@@ -186,7 +186,10 @@ async def create_team(team_create: TeamCreate):
                                 market_type_codes=["MATCH_ODDS"]
                             )
                             if markets:
-                                market_id = markets[0].get("marketId", "")
+                                market = markets[0]
+                                market_id = market.get("marketId", "")
+                                market_start_time = market.get("marketStartTime", "")
+
                                 if market_id:
                                     # Get runner prices
                                     prices = await betfair_client.list_market_book([market_id])
