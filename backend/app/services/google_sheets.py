@@ -431,6 +431,146 @@ class GoogleSheetsClient:
             logger.error(f"Eroare la încărcarea pariurilor: {e}")
             return []
 
+    def get_pending_bets(self) -> List[Dict[str, Any]]:
+        """
+        Obține toate pariurile cu status PENDING din toate sheet-urile echipelor.
+
+        Returns:
+            Lista de pariuri pending cu team_name inclus
+        """
+        if not self._connected:
+            return []
+
+        pending_bets = []
+
+        try:
+            # Get all teams from Index
+            teams = self.load_teams()
+
+            for team in teams:
+                team_name = team.get("name", "")
+                if not team_name:
+                    continue
+
+                try:
+                    worksheet = self._spreadsheet.worksheet(team_name)
+                    records = worksheet.get_all_records()
+
+                    for record in records:
+                        if record.get("Status") == "PENDING":
+                            record["team_name"] = team_name
+                            pending_bets.append(record)
+
+                except Exception as e:
+                    logger.warning(f"Nu s-a putut citi sheet-ul pentru {team_name}: {e}")
+                    continue
+
+            logger.info(f"Găsite {len(pending_bets)} pariuri PENDING")
+            return pending_bets
+
+        except Exception as e:
+            logger.error(f"Eroare la citirea pariurilor pending: {e}")
+            return []
+
+    def update_bet_result(self, team_name: str, bet_id: str, status: str, profit: float = 0) -> bool:
+        """
+        Actualizează rezultatul unui pariu în sheet-ul echipei.
+
+        Args:
+            team_name: Numele echipei
+            bet_id: ID-ul pariului Betfair
+            status: WON sau LOST
+            profit: Profitul (pozitiv pentru WIN, negativ pentru LOSE)
+
+        Returns:
+            True dacă actualizarea a reușit
+        """
+        if not self._connected:
+            return False
+
+        try:
+            worksheet = self._spreadsheet.worksheet(team_name)
+
+            # Find the row with this bet_id
+            cell = worksheet.find(str(bet_id))
+
+            if not cell:
+                logger.warning(f"Nu s-a găsit pariul {bet_id} în sheet-ul {team_name}")
+                return False
+
+            row = cell.row
+
+            # Update Status (column F) and Profit (column G)
+            worksheet.update_cell(row, 6, status)  # Status
+            worksheet.update_cell(row, 7, profit)  # Profit
+
+            logger.info(f"Actualizat pariu {bet_id}: {status}, profit: {profit}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Eroare la actualizarea pariului {bet_id}: {e}")
+            return False
+
+    def update_team_progression_after_result(self, team_name: str, won: bool, stake: float) -> bool:
+        """
+        Actualizează progresia echipei după rezultatul unui pariu.
+
+        Args:
+            team_name: Numele echipei
+            won: True dacă pariul a fost câștigat
+            stake: Miza pariului
+
+        Returns:
+            True dacă actualizarea a reușit
+        """
+        if not self._connected:
+            return False
+
+        try:
+            worksheet = self._spreadsheet.worksheet(team_name)
+
+            # Row 2 contains progression info
+            # Format: --- PROGRESIE | Pierdere Cumulată: X | Pas: Y | Ultima Miză: Z
+            current_values = worksheet.row_values(2)
+
+            if won:
+                # Reset progression
+                new_cumulative_loss = 0
+                new_step = 0
+                logger.info(f"WIN pentru {team_name} - Reset progresie")
+            else:
+                # Increment progression
+                # Parse current values
+                cumulative_loss = 0
+                step = 0
+
+                for val in current_values:
+                    if "Pierdere Cumulată:" in str(val):
+                        try:
+                            cumulative_loss = float(str(val).split(":")[1].strip())
+                        except:
+                            pass
+                    elif "Pas:" in str(val):
+                        try:
+                            step = int(str(val).split(":")[1].strip())
+                        except:
+                            pass
+
+                new_cumulative_loss = cumulative_loss + stake
+                new_step = step + 1
+                logger.info(f"LOSE pentru {team_name} - Progresie: loss={new_cumulative_loss}, step={new_step}")
+
+            # Update row 2
+            worksheet.update_cell(2, 2, f"Pierdere Cumulată: {new_cumulative_loss}")
+            worksheet.update_cell(2, 3, f"Pas: {new_step}")
+            worksheet.update_cell(2, 4, f"Ultima Miză: {stake}")
+
+            return True
+
+        except Exception as e:
+            logger.error(f"Eroare la actualizarea progresiei pentru {team_name}: {e}")
+            return False
+
 
 google_sheets_client = GoogleSheetsClient()
 

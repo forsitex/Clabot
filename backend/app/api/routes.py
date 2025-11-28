@@ -188,7 +188,21 @@ async def create_team(team_create: TeamCreate):
                             if markets:
                                 market = markets[0]
                                 market_id = market.get("marketId", "")
-                                market_start_time = market.get("marketStartTime", "")
+                                market_start_time_utc = market.get("marketStartTime", "")
+
+                                # Convert UTC to Europe/Bucharest
+                                if market_start_time_utc:
+                                    try:
+                                        from datetime import datetime as dt
+                                        import pytz
+                                        utc_time = dt.fromisoformat(market_start_time_utc.replace("Z", "+00:00"))
+                                        bucharest_tz = pytz.timezone("Europe/Bucharest")
+                                        local_time = utc_time.astimezone(bucharest_tz)
+                                        market_start_time = local_time.strftime("%Y-%m-%dT%H:%M")
+                                    except:
+                                        market_start_time = market_start_time_utc
+                                else:
+                                    market_start_time = ""
 
                                 if market_id:
                                     # Get runner prices

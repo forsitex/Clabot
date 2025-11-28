@@ -524,5 +524,121 @@ class BotEngine:
 
         return results
 
+    async def check_bet_results(self) -> Dict[str, Any]:
+        """
+        Verifică rezultatele pariurilor PENDING.
+        Funcție NOUĂ - NU modifică run_cycle().
+
+        Flow:
+        1. Citește pariurile PENDING din Google Sheets
+        2. Verifică pe Betfair dacă sunt settled
+        3. Actualizează status (WON/LOST) în Google Sheets
+        4. Actualizează progresia echipei
+
+        Returns:
+            Dict cu rezultatele verificării
+        """
+        results = {
+            "success": True,
+            "timestamp": datetime.utcnow().isoformat(),
+            "pending_checked": 0,
+            "settled_found": 0,
+            "won": 0,
+            "lost": 0,
+            "still_pending": 0,
+            "errors": []
+        }
+
+        try:
+            from app.services.google_sheets import google_sheets_client
+            from app.services.betfair_client import betfair_client
+
+            # Connect to Google Sheets
+            if not google_sheets_client.is_connected():
+                google_sheets_client.connect()
+
+            if not google_sheets_client.is_connected():
+                results["success"] = False
+                results["message"] = "Nu s-a putut conecta la Google Sheets"
+                return results
+
+            # Get pending bets from Google Sheets
+            pending_bets = google_sheets_client.get_pending_bets()
+            results["pending_checked"] = len(pending_bets)
+
+            if not pending_bets:
+                results["message"] = "Nu există pariuri PENDING de verificat"
+                return results
+
+            logger.info(f"Verificare {len(pending_bets)} pariuri PENDING")
+
+            # Connect to Betfair
+            if not betfair_client.is_connected():
+                await betfair_client.connect()
+
+            if not betfair_client.is_connected():
+                results["success"] = False
+                results["message"] = "Nu s-a putut conecta la Betfair"
+                return results
+
+            # Get settled orders from Betfair
+            settled_orders = await betfair_client.get_settled_orders(days=1)
+
+            # Create a map of bet_id -> settled order
+            settled_map = {}
+            for order in settled_orders:
+                bet_id = str(order.get("betId", ""))
+                if bet_id:
+                    settled_map[bet_id] = order
+
+            logger.info(f"Găsite {len(settled_map)} ordine settled pe Betfair")
+
+            # Check each pending bet
+            for bet in pending_bets:
+                bet_id = str(bet.get("Bet ID", ""))
+                team_name = bet.get("team_name", "")
+                stake = float(bet.get("Miză", 0))
+
+                if not bet_id or not team_name:
+                    continue
+
+                if bet_id in settled_map:
+                    # Bet is settled
+                    settled_order = settled_map[bet_id]
+                    profit = float(settled_order.get("profit", 0))
+
+                    if profit > 0:
+                        # WON
+                        status = "WON"
+                        results["won"] += 1
+                        won = True
+                        logger.info(f"Pariu CÂȘTIGAT: {team_name} - Bet ID: {bet_id} - Profit: {profit}")
+                    else:
+                        # LOST
+                        status = "LOST"
+                        results["lost"] += 1
+                        won = False
+                        logger.info(f"Pariu PIERDUT: {team_name} - Bet ID: {bet_id} - Loss: {profit}")
+
+                    results["settled_found"] += 1
+
+                    # Update Google Sheets
+                    google_sheets_client.update_bet_result(team_name, bet_id, status, profit)
+                    google_sheets_client.update_team_progression_after_result(team_name, won, stake)
+
+                else:
+                    # Still pending
+                    results["still_pending"] += 1
+                    logger.info(f"Pariu încă în așteptare: {team_name} - Bet ID: {bet_id}")
+
+            results["message"] = f"Verificare completă: {results['won']} WIN, {results['lost']} LOST, {results['still_pending']} în așteptare"
+
+        except Exception as e:
+            results["success"] = False
+            results["message"] = f"Eroare la verificare: {str(e)}"
+            logger.error(f"Eroare la verificarea rezultatelor: {e}")
+
+        return results
+
 
 bot_engine = BotEngine()

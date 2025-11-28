@@ -51,6 +51,31 @@ async def scheduled_bot_run():
     logger.info(f"Rezultat execuție programată: {result}")
 
 
+async def scheduled_results_check():
+    """
+    Funcție NOUĂ pentru verificarea rezultatelor.
+    Rulează separat de scheduled_bot_run - NU interferează cu plasarea pariurilor.
+    """
+    logger.info("Verificare programată rezultate pariuri")
+
+    await broadcast_notification("Verificare rezultate pariuri...", "info")
+
+    result = await bot_engine.check_bet_results()
+
+    await broadcast_bot_state()
+
+    if result["success"]:
+        msg = f"Verificare: {result.get('won', 0)} WIN, {result.get('lost', 0)} LOST"
+        await broadcast_notification(msg, "success")
+    else:
+        await broadcast_notification(
+            f"Eroare verificare: {result.get('message', 'Eroare necunoscută')}",
+            "error"
+        )
+
+    logger.info(f"Rezultat verificare: {result}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifecycle manager pentru aplicație."""
@@ -71,11 +96,24 @@ async def lifespan(app: FastAPI):
         replace_existing=True
     )
 
+    # Job NOU pentru verificare rezultate - rulează la fiecare 30 minute
+    # ID diferit: "check_results_job" vs "daily_bot_run"
+    from apscheduler.triggers.interval import IntervalTrigger
+
+    scheduler.add_job(
+        scheduled_results_check,
+        trigger=IntervalTrigger(minutes=30),
+        id="check_results_job",
+        name="Verificare rezultate pariuri",
+        replace_existing=True
+    )
+
     scheduler.start()
     logger.info(
         f"Scheduler pornit - Bot programat la {settings.bot_run_hour:02d}:{settings.bot_run_minute:02d} "
         f"({settings.bot_timezone})"
     )
+    logger.info("Verificare rezultate programată la fiecare 30 minute")
 
     yield
 
