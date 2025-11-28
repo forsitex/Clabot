@@ -156,7 +156,7 @@ async def create_team(team_create: TeamCreate):
         team_data["updated_at"] = team_data["updated_at"].isoformat() if team_data.get("updated_at") else ""
         google_sheets_client.save_team(team_data)
 
-        # Fetch next 20 matches from Betfair
+        # Fetch next 20 matches from Betfair with odds
         try:
             if not betfair_client.is_connected():
                 await betfair_client.connect()
@@ -172,11 +172,39 @@ async def create_team(team_create: TeamCreate):
                 matches = []
                 for event in events[:20]:
                     event_data = event.get("event", {})
+                    event_id = event_data.get("id", "")
+                    market_start_time = event.get("marketStartTime", "")
+                    event_name = event_data.get("name", "")
+                    competition = event.get("competitionName", "")
+
+                    # Get odds for this event (Match Odds market)
+                    odds = ""
+                    if event_id:
+                        try:
+                            markets = await betfair_client.list_market_catalogue(
+                                event_ids=[event_id],
+                                market_type_codes=["MATCH_ODDS"]
+                            )
+                            if markets:
+                                market_id = markets[0].get("marketId", "")
+                                if market_id:
+                                    # Get runner prices
+                                    prices = await betfair_client.list_market_book([market_id])
+                                    if prices and prices[0].get("runners"):
+                                        # Get first runner's back price (home team)
+                                        runners = prices[0].get("runners", [])
+                                        if runners:
+                                            back_prices = runners[0].get("ex", {}).get("availableToBack", [])
+                                            if back_prices:
+                                                odds = back_prices[0].get("price", "")
+                        except Exception as e:
+                            logger.warning(f"Could not get odds for {event_name}: {e}")
+
                     matches.append({
-                        "start_time": event.get("marketStartTime", ""),
-                        "event_name": event_data.get("name", ""),
-                        "competition": event.get("competitionName", ""),
-                        "odds": ""
+                        "start_time": market_start_time,
+                        "event_name": event_name,
+                        "competition": competition,
+                        "odds": str(odds) if odds else ""
                     })
 
                 if matches:
