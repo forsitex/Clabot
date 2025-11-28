@@ -1,5 +1,8 @@
 import logging
 import httpx
+import os
+import base64
+import tempfile
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 
@@ -27,6 +30,8 @@ class BetfairClient:
         self._password: Optional[str] = None
         self._cert_path: Optional[str] = None
         self._key_path: Optional[str] = None
+        self._temp_cert_file: Optional[str] = None
+        self._temp_key_file: Optional[str] = None
         self._connected = False
         self._http_client: Optional[httpx.AsyncClient] = None
 
@@ -56,6 +61,34 @@ class BetfairClient:
         self._password = password
         self._cert_path = cert_path
         self._key_path = key_path
+
+        # Check for base64 encoded certificates in environment
+        cert_base64 = os.environ.get("BETFAIR_CERT_BASE64")
+        key_base64 = os.environ.get("BETFAIR_KEY_BASE64")
+
+        if cert_base64 and key_base64:
+            try:
+                # Create temporary files for certificates
+                cert_data = base64.b64decode(cert_base64)
+                key_data = base64.b64decode(key_base64)
+
+                # Write to temp files
+                cert_file = tempfile.NamedTemporaryFile(mode='wb', suffix='.crt', delete=False)
+                cert_file.write(cert_data)
+                cert_file.close()
+                self._temp_cert_file = cert_file.name
+                self._cert_path = cert_file.name
+
+                key_file = tempfile.NamedTemporaryFile(mode='wb', suffix='.key', delete=False)
+                key_file.write(key_data)
+                key_file.close()
+                self._temp_key_file = key_file.name
+                self._key_path = key_file.name
+
+                logger.info("Certificate loaded from environment variables")
+            except Exception as e:
+                logger.error(f"Failed to load certificates from env: {e}")
+
         return True
 
     async def connect(self) -> bool:
@@ -111,6 +144,13 @@ class BetfairClient:
             await self._http_client.aclose()
         self._session_token = None
         self._connected = False
+
+        # Cleanup temp certificate files
+        if self._temp_cert_file and os.path.exists(self._temp_cert_file):
+            os.unlink(self._temp_cert_file)
+        if self._temp_key_file and os.path.exists(self._temp_key_file):
+            os.unlink(self._temp_key_file)
+
         logger.info("Deconectat de la Betfair API")
 
     def _get_headers(self) -> Dict[str, str]:
