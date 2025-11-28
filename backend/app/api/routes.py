@@ -405,6 +405,40 @@ async def update_settings(updates: SettingsUpdate):
     if updates.max_progression_steps:
         staking_service.max_progression_steps = updates.max_progression_steps
 
+    # Update scheduler if time changed
+    if updates.bot_run_hour is not None or updates.bot_run_minute is not None:
+        from app.main import scheduler, scheduled_bot_run
+        import pytz
+        from apscheduler.triggers.cron import CronTrigger
+
+        timezone = pytz.timezone("Europe/Bucharest")
+        new_hour = updates.bot_run_hour if updates.bot_run_hour is not None else updated.bot_run_hour
+        new_minute = updates.bot_run_minute if updates.bot_run_minute is not None else updated.bot_run_minute
+
+        trigger = CronTrigger(
+            hour=new_hour,
+            minute=new_minute,
+            timezone=timezone
+        )
+
+        # Remove old job and add new one
+        try:
+            scheduler.remove_job("daily_bot_run")
+        except:
+            pass
+
+        scheduler.add_job(
+            scheduled_bot_run,
+            trigger=trigger,
+            id="daily_bot_run",
+            name="Execuție zilnică bot",
+            replace_existing=True
+        )
+
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Scheduler reprogramat la {new_hour:02d}:{new_minute:02d}")
+
     return updated
 
 
