@@ -3,7 +3,6 @@ import { computed } from "vue";
 import {
   Play,
   Square,
-  RefreshCw,
   TrendingUp,
   TrendingDown,
   Users,
@@ -18,16 +17,13 @@ const botStore = useBotStore();
 const stats = computed(() => botStore.stats);
 const state = computed(() => botStore.state);
 
-async function handleStart(): Promise<void> {
+async function handleRunNow(): Promise<void> {
   await botStore.start();
+  await botStore.runNow();
 }
 
 async function handleStop(): Promise<void> {
   await botStore.stop();
-}
-
-async function handleRunNow(): Promise<void> {
-  await botStore.runNow();
 }
 
 function formatDate(dateStr: string | null): string {
@@ -52,13 +48,13 @@ function formatCurrency(value: number): string {
 
       <div class="flex items-center space-x-2 sm:space-x-3">
         <button
-          v-if="botStore.isStopped"
-          @click="handleStart"
+          v-if="!botStore.isRunning"
+          @click="handleRunNow"
           :disabled="botStore.isLoading"
           class="btn btn-success flex items-center text-xs sm:text-sm py-2 px-3 sm:py-2.5 sm:px-4"
         >
           <Play class="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-          <span class="hidden xs:inline">Pornește</span> Bot
+          Start
         </button>
 
         <button
@@ -68,19 +64,7 @@ function formatCurrency(value: number): string {
           class="btn btn-danger flex items-center text-xs sm:text-sm py-2 px-3 sm:py-2.5 sm:px-4"
         >
           <Square class="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-          <span class="hidden xs:inline">Oprește</span> Bot
-        </button>
-
-        <button
-          @click="handleRunNow"
-          :disabled="botStore.isLoading || !botStore.isRunning"
-          class="btn btn-primary flex items-center text-xs sm:text-sm py-2 px-3 sm:py-2.5 sm:px-4"
-        >
-          <RefreshCw
-            class="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2"
-            :class="{ 'animate-spin': botStore.isLoading }"
-          />
-          <span class="hidden xs:inline">Execută</span> Acum
+          Stop
         </button>
       </div>
     </div>
