@@ -105,7 +105,8 @@ app.add_api_websocket_route("/ws", websocket_endpoint)
 
 
 # Serve frontend static files in production
-frontend_dist = Path(__file__).parent.parent.parent.parent / "frontend" / "dist"
+# In Docker: /app/backend/app/main.py -> /app/frontend/dist
+frontend_dist = Path(__file__).parent.parent.parent / "frontend" / "dist"
 if frontend_dist.exists():
     app.mount("/assets", StaticFiles(directory=frontend_dist / "assets"), name="assets")
 
