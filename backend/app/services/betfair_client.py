@@ -169,22 +169,32 @@ class BetfairClient:
 
         logger.info("Deconectat de la Betfair API")
 
-    def _get_headers(self) -> Dict[str, str]:
+    def _get_headers(self, use_live_key: bool = False) -> Dict[str, str]:
         """Returnează headerele pentru request-uri API."""
+        app_key = self._app_key or ""
+
+        # Use live key for placing bets
+        if use_live_key:
+            live_key = os.environ.get("BETFAIR_LIVE_KEY")
+            if live_key:
+                app_key = live_key
+                logger.info("Using LIVE KEY for this request")
+
         return {
-            "X-Application": self._app_key or "",
+            "X-Application": app_key,
             "X-Authentication": self._session_token or "",
             "Content-Type": "application/json",
             "Accept": "application/json"
         }
 
-    async def _api_request(self, endpoint: str, params: Dict[str, Any]) -> Dict[str, Any]:
+    async def _api_request(self, endpoint: str, params: Dict[str, Any], use_live_key: bool = False) -> Dict[str, Any]:
         """
         Execută un request către Betfair API.
 
         Args:
             endpoint: Endpoint-ul API (ex: listMarketCatalogue)
             params: Parametrii request-ului
+            use_live_key: Folosește Live Key pentru plasare pariuri
 
         Returns:
             Răspunsul API ca dicționar
@@ -207,7 +217,7 @@ class BetfairClient:
                 logger.info(f"API request to {url} via proxy: {proxy_url}")
                 response = await client.post(
                     url,
-                    headers=self._get_headers(),
+                    headers=self._get_headers(use_live_key=use_live_key),
                     json=params
                 )
 
@@ -434,6 +444,16 @@ class BetfairClient:
         Returns:
             Răspunsul plasării
         """
+        # Use LIVE KEY for placing bets (if available)
+        live_key = os.environ.get("BETFAIR_LIVE_KEY")
+        if not live_key:
+            logger.error("BETFAIR_LIVE_KEY not configured - cannot place bets")
+            return PlaceOrderResponse(
+                success=False,
+                status="ERROR",
+                error_message="Live key not configured"
+            )
+
         params = {
             "marketId": market_id,
             "instructions": [{
@@ -449,7 +469,8 @@ class BetfairClient:
             }]
         }
 
-        result = await self._api_request("placeOrders", params)
+        # Use live key for placing orders
+        result = await self._api_request("placeOrders", params, use_live_key=True)
 
         if "error" in result:
             return PlaceOrderResponse(
