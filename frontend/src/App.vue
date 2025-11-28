@@ -1,13 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted } from "vue";
 import { RouterView, RouterLink, useRoute } from "vue-router";
-import {
-  LayoutDashboard,
-  Users,
-  History,
-  Settings,
-  Activity,
-} from "lucide-vue-next";
+import { LayoutDashboard, Users, History, Settings } from "lucide-vue-next";
 import { useBotStore } from "@/stores/bot";
 import { useTeamsStore } from "@/stores/teams";
 import { useWebSocket } from "@/services/websocket";
@@ -65,10 +59,7 @@ const navItems = [
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
           <div class="flex items-center">
-            <Activity class="h-8 w-8 text-primary-600" />
-            <span class="ml-2 text-xl font-bold text-gray-900"
-              >Betfair Bot</span
-            >
+            <img src="/logo.png" alt="Logo" class="h-10 w-auto" />
           </div>
 
           <div class="flex items-center space-x-4">
