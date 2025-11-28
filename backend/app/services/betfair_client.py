@@ -197,16 +197,17 @@ class BetfairClient:
         url = f"{self.API_URL}/{endpoint}/"
 
         try:
-            # Ensure http_client exists with proxy
-            if not self._http_client:
-                proxy_url = os.environ.get("BETFAIR_PROXY_URL")
-                self._http_client = httpx.AsyncClient(proxy=proxy_url if proxy_url else None)
+            # Get proxy URL
+            proxy_url = os.environ.get("BETFAIR_PROXY_URL")
 
-            response = await self._http_client.post(
-                url,
-                headers=self._get_headers(),
-                json=params
-            )
+            # Create a new client for each request to ensure proxy is used
+            async with httpx.AsyncClient(proxy=proxy_url, timeout=30.0) as client:
+                logger.info(f"API request to {url} via proxy: {proxy_url}")
+                response = await client.post(
+                    url,
+                    headers=self._get_headers(),
+                    json=params
+                )
 
             if response.status_code == 200:
                 return response.json()
