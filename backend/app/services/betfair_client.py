@@ -173,12 +173,8 @@ class BetfairClient:
         """Returnează headerele pentru request-uri API."""
         app_key = self._app_key or ""
 
-        # Use live key for placing bets
-        if use_live_key:
-            live_key = os.environ.get("BETFAIR_LIVE_KEY")
-            if live_key:
-                app_key = live_key
-                logger.info("Using LIVE KEY for this request")
+        # Always use the main APP_KEY (LIVE_KEY was invalid)
+        # The APP_KEY works for all operations including placing bets
 
         return {
             "X-Application": app_key,
