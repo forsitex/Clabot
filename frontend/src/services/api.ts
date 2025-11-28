@@ -1,0 +1,156 @@
+import axios from "axios";
+import type {
+  Team,
+  TeamCreate,
+  TeamUpdate,
+  Bet,
+  BotState,
+  DashboardStats,
+  ProgressionInfo,
+  ApiResponse,
+} from "@/types";
+
+const api = axios.create({
+  baseURL: "/api",
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+export const healthCheck = async (): Promise<{
+  status: string;
+  timestamp: string;
+}> => {
+  const response = await api.get("/health");
+  return response.data;
+};
+
+export const getStats = async (): Promise<DashboardStats> => {
+  const response = await api.get("/stats");
+  return response.data;
+};
+
+export const getBotState = async (): Promise<BotState> => {
+  const response = await api.get("/bot/state");
+  return response.data;
+};
+
+export const startBot = async (): Promise<ApiResponse> => {
+  const response = await api.post("/bot/start");
+  return response.data;
+};
+
+export const stopBot = async (): Promise<ApiResponse> => {
+  const response = await api.post("/bot/stop");
+  return response.data;
+};
+
+export const runBotNow = async (): Promise<ApiResponse> => {
+  const response = await api.post("/bot/run-now");
+  return response.data;
+};
+
+export const getTeams = async (activeOnly = false): Promise<Team[]> => {
+  const response = await api.get("/teams", {
+    params: { active_only: activeOnly },
+  });
+  return response.data;
+};
+
+export const getTeam = async (teamId: string): Promise<Team> => {
+  const response = await api.get(`/teams/${teamId}`);
+  return response.data;
+};
+
+export const createTeam = async (team: TeamCreate): Promise<Team> => {
+  const response = await api.post("/teams", team);
+  return response.data;
+};
+
+export const updateTeam = async (
+  teamId: string,
+  updates: TeamUpdate
+): Promise<Team> => {
+  const response = await api.put(`/teams/${teamId}`, updates);
+  return response.data;
+};
+
+export const deleteTeam = async (teamId: string): Promise<ApiResponse> => {
+  const response = await api.delete(`/teams/${teamId}`);
+  return response.data;
+};
+
+export const pauseTeam = async (teamId: string): Promise<Team> => {
+  const response = await api.post(`/teams/${teamId}/pause`);
+  return response.data;
+};
+
+export const activateTeam = async (teamId: string): Promise<Team> => {
+  const response = await api.post(`/teams/${teamId}/activate`);
+  return response.data;
+};
+
+export const resetTeamProgression = async (teamId: string): Promise<Team> => {
+  const response = await api.post(`/teams/${teamId}/reset`);
+  return response.data;
+};
+
+export const getTeamProgression = async (
+  teamId: string,
+  nextOdds = 1.5
+): Promise<ProgressionInfo> => {
+  const response = await api.get(`/teams/${teamId}/progression`, {
+    params: { next_odds: nextOdds },
+  });
+  return response.data;
+};
+
+export const getBets = async (params?: {
+  team_id?: string;
+  status_filter?: string;
+  limit?: number;
+}): Promise<Bet[]> => {
+  const response = await api.get("/bets", { params });
+  return response.data;
+};
+
+export const getPendingBets = async (): Promise<Bet[]> => {
+  const response = await api.get("/bets/pending");
+  return response.data;
+};
+
+export const getBet = async (betId: string): Promise<Bet> => {
+  const response = await api.get(`/bets/${betId}`);
+  return response.data;
+};
+
+export const settleBet = async (betId: string, won: boolean): Promise<Bet> => {
+  const response = await api.post(`/bets/${betId}/settle`, null, {
+    params: { won },
+  });
+  return response.data;
+};
+
+export const calculateStake = async (
+  cumulativeLoss: number,
+  odds: number,
+  progressionStep: number
+): Promise<{
+  stake: number;
+  potential_profit: number;
+  stop_loss_reached: boolean;
+  cumulative_loss: number;
+  odds: number;
+  progression_step: number;
+}> => {
+  const response = await api.get("/calculate-stake", {
+    params: {
+      cumulative_loss: cumulativeLoss,
+      odds,
+      progression_step: progressionStep,
+    },
+  });
+  return response.data;
+};
+
+export default api;

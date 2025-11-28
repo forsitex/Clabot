@@ -1,0 +1,31 @@
+version: "3.8"
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - BETFAIR_APP_KEY=${BETFAIR_APP_KEY}
+      - BETFAIR_USERNAME=${BETFAIR_USERNAME}
+      - BETFAIR_PASSWORD=${BETFAIR_PASSWORD}
+      - GOOGLE_SHEETS_SPREADSHEET_ID=${GOOGLE_SHEETS_SPREADSHEET_ID}
+      - BOT_TIMEZONE=Europe/Bucharest
+      - BOT_RUN_HOUR=13
+      - BOT_RUN_MINUTE=0
+    volumes:
+      - ./backend/certs:/app/certs:ro
+      - ./backend/credentials:/app/credentials:ro
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped

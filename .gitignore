@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+.env
+*.egg-info/
+dist/
+build/
+
+# Node
+node_modules/
+dist/
+.npm
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Credentials
+*.crt
+*.key
+*.pem
+credentials/
+certs/
+*service_account*.json
+
+# Excel
+*.xlsx
+*.xls
+
+# Local
+.env.local
+.env.*.local
