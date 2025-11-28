@@ -153,4 +153,53 @@ export const calculateStake = async (
   return response.data;
 };
 
+export interface AppSettings {
+  betfair_app_key: string;
+  betfair_username: string;
+  betfair_password: string;
+  betfair_cert_file: string | null;
+  betfair_key_file: string | null;
+  google_sheets_spreadsheet_id: string;
+  google_credentials_file: string | null;
+  bot_run_hour: number;
+  bot_run_minute: number;
+  initial_stake: number;
+  max_progression_steps: number;
+  betfair_connected: boolean;
+  google_sheets_connected: boolean;
+}
+
+export interface SettingsUpdate {
+  betfair_app_key?: string;
+  betfair_username?: string;
+  betfair_password?: string;
+  google_sheets_spreadsheet_id?: string;
+  bot_run_hour?: number;
+  bot_run_minute?: number;
+  initial_stake?: number;
+  max_progression_steps?: number;
+}
+
+export const getSettings = async (): Promise<AppSettings> => {
+  const response = await api.get("/settings");
+  return response.data;
+};
+
+export const updateSettings = async (
+  updates: SettingsUpdate
+): Promise<AppSettings> => {
+  const response = await api.put("/settings", updates);
+  return response.data;
+};
+
+export const testBetfairConnection = async (): Promise<ApiResponse> => {
+  const response = await api.post("/settings/test-betfair");
+  return response.data;
+};
+
+export const testGoogleSheetsConnection = async (): Promise<ApiResponse> => {
+  const response = await api.post("/settings/test-google-sheets");
+  return response.data;
+};
+
 export default api;

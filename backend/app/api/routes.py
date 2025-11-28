@@ -9,8 +9,12 @@ from app.models.schemas import (
     BotState, BotStatus,
     DashboardStats, ApiResponse, Sport
 )
+from app.models.settings import AppSettings, SettingsUpdate
 from app.services.bot_engine import bot_engine
 from app.services.staking import staking_service
+from app.services.settings_manager import settings_manager
+from app.services.google_sheets import google_sheets_client
+from app.services.betfair_client import betfair_client
 
 router = APIRouter()
 
@@ -271,3 +275,72 @@ async def calculate_stake(
         "odds": odds,
         "progression_step": progression_step
     }
+
+
+@router.get("/settings", response_model=AppSettings)
+async def get_settings():
+    """Returnează setările aplicației."""
+    return settings_manager.get_settings()
+
+
+@router.put("/settings", response_model=AppSettings)
+async def update_settings(updates: SettingsUpdate):
+    """Actualizează setările aplicației."""
+    updated = settings_manager.update_settings(updates)
+
+    if updates.initial_stake:
+        staking_service.initial_stake = updates.initial_stake
+    if updates.max_progression_steps:
+        staking_service.max_progression_steps = updates.max_progression_steps
+
+    return updated
+
+
+@router.post("/settings/test-betfair", response_model=ApiResponse)
+async def test_betfair_connection():
+    """Testează conexiunea la Betfair API."""
+    settings = settings_manager.get_settings()
+
+    if not settings_manager.is_betfair_configured():
+        return ApiResponse(
+            success=False,
+            message="Credențialele Betfair nu sunt configurate"
+        )
+
+    betfair_client.configure(
+        app_key=settings.betfair_app_key,
+        username=settings.betfair_username,
+        password=settings.betfair_password
+    )
+
+    connected = await betfair_client.connect()
+    settings_manager.set_betfair_connected(connected)
+
+    if connected:
+        return ApiResponse(success=True, message="Conectat la Betfair API")
+    else:
+        return ApiResponse(success=False, message="Conexiune eșuată la Betfair API")
+
+
+@router.post("/settings/test-google-sheets", response_model=ApiResponse)
+async def test_google_sheets_connection():
+    """Testează conexiunea la Google Sheets."""
+    settings = settings_manager.get_settings()
+
+    if not settings_manager.is_google_sheets_configured():
+        return ApiResponse(
+            success=False,
+            message="Google Sheets nu este configurat"
+        )
+
+    google_sheets_client.configure(
+        spreadsheet_id=settings.google_sheets_spreadsheet_id
+    )
+
+    connected = google_sheets_client.connect()
+    settings_manager.set_google_sheets_connected(connected)
+
+    if connected:
+        return ApiResponse(success=True, message="Conectat la Google Sheets")
+    else:
+        return ApiResponse(success=False, message="Conexiune eșuată la Google Sheets")

@@ -39,3 +39,6 @@ certs/
 # Local
 .env.local
 .env.*.local
+
+# Data persistence
+backend/data/

@@ -1,0 +1,283 @@
+import logging
+from typing import List, Optional, Dict, Any
+from datetime import datetime
+
+logger = logging.getLogger(__name__)
+
+
+class GoogleSheetsClient:
+    """
+    Client pentru Google Sheets API.
+    Gestionează persistența datelor: echipe, pariuri, configurări.
+    """
+
+    def __init__(self):
+        self._client = None
+        self._spreadsheet = None
+        self._spreadsheet_id: Optional[str] = None
+        self._credentials_path: Optional[str] = None
+        self._connected = False
+
+    def configure(self, spreadsheet_id: str, credentials_path: Optional[str] = None) -> bool:
+        """
+        Configurează clientul Google Sheets.
+
+        Args:
+            spreadsheet_id: ID-ul spreadsheet-ului
+            credentials_path: Calea către fișierul JSON cu credențiale
+
+        Returns:
+            True dacă configurarea a reușit
+        """
+        self._spreadsheet_id = spreadsheet_id
+        self._credentials_path = credentials_path
+        return True
+
+    def connect(self) -> bool:
+        """
+        Conectează la Google Sheets API.
+
+        Returns:
+            True dacă conexiunea a reușit
+        """
+        if not self._spreadsheet_id:
+            logger.error("Spreadsheet ID nu este configurat")
+            return False
+
+        try:
+            import gspread
+            from google.oauth2.service_account import Credentials
+
+            scopes = [
+                "https://www.googleapis.com/auth/spreadsheets",
+                "https://www.googleapis.com/auth/drive"
+            ]
+
+            if self._credentials_path:
+                credentials = Credentials.from_service_account_file(
+                    self._credentials_path,
+                    scopes=scopes
+                )
+            else:
+                credentials = Credentials.from_service_account_info(
+                    self._get_credentials_from_env(),
+                    scopes=scopes
+                )
+
+            self._client = gspread.authorize(credentials)
+            self._spreadsheet = self._client.open_by_key(self._spreadsheet_id)
+            self._connected = True
+
+            logger.info(f"Conectat la Google Sheets: {self._spreadsheet.title}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Eroare la conectarea la Google Sheets: {e}")
+            self._connected = False
+            return False
+
+    def _get_credentials_from_env(self) -> dict:
+        """Obține credențialele din variabilele de environment."""
+        import os
+        import json
+
+        creds_json = os.environ.get("GOOGLE_CREDENTIALS_JSON", "{}")
+        return json.loads(creds_json)
+
+    def is_connected(self) -> bool:
+        """Verifică dacă clientul este conectat."""
+        return self._connected
+
+    def disconnect(self) -> None:
+        """Deconectează clientul."""
+        self._client = None
+        self._spreadsheet = None
+        self._connected = False
+        logger.info("Deconectat de la Google Sheets")
+
+    def _get_or_create_worksheet(self, name: str, headers: List[str]) -> Any:
+        """Obține sau creează un worksheet."""
+        try:
+            worksheet = self._spreadsheet.worksheet(name)
+        except Exception:
+            worksheet = self._spreadsheet.add_worksheet(title=name, rows=1000, cols=len(headers))
+            worksheet.append_row(headers)
+            logger.info(f"Worksheet creat: {name}")
+        return worksheet
+
+    def load_teams(self) -> List[Dict[str, Any]]:
+        """
+        Încarcă echipele din Google Sheets.
+
+        Returns:
+            Lista de echipe ca dicționare
+        """
+        if not self._connected:
+            logger.warning("Nu sunt conectat la Google Sheets")
+            return []
+
+        try:
+            headers = ["id", "name", "betfair_id", "sport", "league", "country",
+                      "cumulative_loss", "last_stake", "progression_step", "status",
+                      "created_at", "updated_at"]
+            worksheet = self._get_or_create_worksheet("Echipe", headers)
+
+            records = worksheet.get_all_records()
+            teams = []
+
+            for record in records:
+                if record.get("id"):
+                    teams.append({
+                        "id": str(record["id"]),
+                        "name": record.get("name", ""),
+                        "betfair_id": record.get("betfair_id") or None,
+                        "sport": record.get("sport", "football"),
+                        "league": record.get("league", ""),
+                        "country": record.get("country", ""),
+                        "cumulative_loss": float(record.get("cumulative_loss", 0)),
+                        "last_stake": float(record.get("last_stake", 100)),
+                        "progression_step": int(record.get("progression_step", 0)),
+                        "status": record.get("status", "active"),
+                        "created_at": record.get("created_at", datetime.utcnow().isoformat()),
+                        "updated_at": record.get("updated_at", datetime.utcnow().isoformat())
+                    })
+
+            logger.info(f"Încărcate {len(teams)} echipe din Google Sheets")
+            return teams
+
+        except Exception as e:
+            logger.error(f"Eroare la încărcarea echipelor: {e}")
+            return []
+
+    def save_team(self, team: Dict[str, Any]) -> bool:
+        """
+        Salvează sau actualizează o echipă în Google Sheets.
+
+        Args:
+            team: Datele echipei
+
+        Returns:
+            True dacă salvarea a reușit
+        """
+        if not self._connected:
+            logger.warning("Nu sunt conectat la Google Sheets")
+            return False
+
+        try:
+            headers = ["id", "name", "betfair_id", "sport", "league", "country",
+                      "cumulative_loss", "last_stake", "progression_step", "status",
+                      "created_at", "updated_at"]
+            worksheet = self._get_or_create_worksheet("Echipe", headers)
+
+            cell = worksheet.find(team["id"])
+
+            row_data = [
+                team["id"],
+                team["name"],
+                team.get("betfair_id", ""),
+                team.get("sport", "football"),
+                team.get("league", ""),
+                team.get("country", ""),
+                team.get("cumulative_loss", 0),
+                team.get("last_stake", 100),
+                team.get("progression_step", 0),
+                team.get("status", "active"),
+                team.get("created_at", datetime.utcnow().isoformat()),
+                datetime.utcnow().isoformat()
+            ]
+
+            if cell:
+                row_num = cell.row
+                worksheet.update(f"A{row_num}:L{row_num}", [row_data])
+            else:
+                worksheet.append_row(row_data)
+
+            logger.info(f"Echipă salvată: {team['name']}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Eroare la salvarea echipei: {e}")
+            return False
+
+    def delete_team(self, team_id: str) -> bool:
+        """Șterge o echipă din Google Sheets."""
+        if not self._connected:
+            return False
+
+        try:
+            worksheet = self._spreadsheet.worksheet("Echipe")
+            cell = worksheet.find(team_id)
+
+            if cell:
+                worksheet.delete_rows(cell.row)
+                logger.info(f"Echipă ștearsă: {team_id}")
+                return True
+            return False
+
+        except Exception as e:
+            logger.error(f"Eroare la ștergerea echipei: {e}")
+            return False
+
+    def save_bet(self, bet: Dict[str, Any]) -> bool:
+        """Salvează un pariu în Google Sheets."""
+        if not self._connected:
+            return False
+
+        try:
+            headers = ["id", "team_id", "team_name", "event_name", "pronostic",
+                      "odds", "stake", "potential_profit", "result", "status",
+                      "placed_at", "settled_at", "created_at"]
+            worksheet = self._get_or_create_worksheet("Istoric", headers)
+
+            row_data = [
+                bet["id"],
+                bet["team_id"],
+                bet["team_name"],
+                bet["event_name"],
+                bet["pronostic"],
+                bet["odds"],
+                bet["stake"],
+                bet["potential_profit"],
+                bet.get("result", ""),
+                bet["status"],
+                bet.get("placed_at", ""),
+                bet.get("settled_at", ""),
+                bet.get("created_at", datetime.utcnow().isoformat())
+            ]
+
+            cell = worksheet.find(bet["id"]) if worksheet.row_count > 1 else None
+
+            if cell:
+                row_num = cell.row
+                worksheet.update(f"A{row_num}:M{row_num}", [row_data])
+            else:
+                worksheet.append_row(row_data)
+
+            return True
+
+        except Exception as e:
+            logger.error(f"Eroare la salvarea pariului: {e}")
+            return False
+
+    def load_bets(self, limit: int = 100) -> List[Dict[str, Any]]:
+        """Încarcă pariurile din Google Sheets."""
+        if not self._connected:
+            return []
+
+        try:
+            worksheet = self._spreadsheet.worksheet("Istoric")
+            records = worksheet.get_all_records()
+
+            bets = []
+            for record in records[-limit:]:
+                if record.get("id"):
+                    bets.append(record)
+
+            return bets
+
+        except Exception as e:
+            logger.error(f"Eroare la încărcarea pariurilor: {e}")
+            return []
+
+
+google_sheets_client = GoogleSheetsClient()
