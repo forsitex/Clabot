@@ -150,7 +150,11 @@ async def create_team(team_create: TeamCreate):
 
     if google_sheets_client.is_connected():
         # Save team to Index sheet and create team sheet
-        google_sheets_client.save_team(team.model_dump())
+        team_data = team.model_dump()
+        # Convert datetime to string for JSON serialization
+        team_data["created_at"] = team_data["created_at"].isoformat() if team_data.get("created_at") else ""
+        team_data["updated_at"] = team_data["updated_at"].isoformat() if team_data.get("updated_at") else ""
+        google_sheets_client.save_team(team_data)
 
         # Fetch next 20 matches from Betfair
         try:
