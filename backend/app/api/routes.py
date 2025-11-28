@@ -391,7 +391,8 @@ class ChatResponse(BaseModel):
 async def ai_chat_endpoint(request: ChatRequest):
     """Trimite un mesaj către AI și primește răspuns cu date live de pe Betfair."""
     if request.use_betfair:
-        response = await ai_chat.chat_with_betfair(request.message)
+        # Use chat_with_bets which handles both bets queries and match queries
+        response = await ai_chat.chat_with_bets(request.message)
     else:
         response = await ai_chat.chat(request.message)
     return ChatResponse(response=response)

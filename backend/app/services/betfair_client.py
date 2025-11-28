@@ -508,6 +508,86 @@ class BetfairClient:
         result = await self._api_request("getAccountFunds", {})
         return result
 
+    async def get_current_orders(self) -> List[Dict[str, Any]]:
+        """
+        Obține pariurile curente (nefinalizate) din cont.
+
+        Returns:
+            Lista de pariuri active
+        """
+        params = {
+            "orderProjection": "ALL",
+            "dateRange": {}
+        }
+
+        result = await self._api_request("listCurrentOrders", params)
+
+        if "error" in result:
+            logger.error(f"Error getting current orders: {result.get('error')}")
+            return []
+
+        orders = result.get("currentOrders", [])
+        logger.info(f"Found {len(orders)} current orders")
+        return orders
+
+    async def get_settled_orders(self, days: int = 7) -> List[Dict[str, Any]]:
+        """
+        Obține pariurile finalizate (settled) din ultimele zile.
+
+        Args:
+            days: Numărul de zile în urmă
+
+        Returns:
+            Lista de pariuri finalizate
+        """
+        from_date = (datetime.utcnow() - timedelta(days=days)).isoformat() + "Z"
+        to_date = datetime.utcnow().isoformat() + "Z"
+
+        params = {
+            "settledDateRange": {
+                "from": from_date,
+                "to": to_date
+            }
+        }
+
+        result = await self._api_request("listClearedOrders", params)
+
+        if "error" in result:
+            logger.error(f"Error getting settled orders: {result.get('error')}")
+            return []
+
+        orders = result.get("clearedOrders", [])
+        logger.info(f"Found {len(orders)} settled orders in last {days} days")
+        return orders
+
+    async def get_all_bets_summary(self) -> Dict[str, Any]:
+        """
+        Obține un rezumat al tuturor pariurilor (active + finalizate).
+
+        Returns:
+            Dict cu rezumatul pariurilor
+        """
+        current = await self.get_current_orders()
+        settled = await self.get_settled_orders(days=7)
+
+        # Calculate stats
+        total_staked_current = sum(float(o.get("sizeMatched", 0)) for o in current)
+        total_profit = sum(float(o.get("profit", 0)) for o in settled)
+
+        won = [o for o in settled if float(o.get("profit", 0)) > 0]
+        lost = [o for o in settled if float(o.get("profit", 0)) < 0]
+
+        return {
+            "current_bets": current,
+            "current_count": len(current),
+            "total_staked_current": round(total_staked_current, 2),
+            "settled_bets": settled,
+            "settled_count": len(settled),
+            "won_count": len(won),
+            "lost_count": len(lost),
+            "total_profit": round(total_profit, 2)
+        }
+
 
 betfair_client = BetfairClient()
 

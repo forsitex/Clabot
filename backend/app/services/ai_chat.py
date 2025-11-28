@@ -239,5 +239,59 @@ Oferă:
 
         return await self.chat_with_context(message, matches_data)
 
+    async def fetch_my_bets(self) -> Dict[str, Any]:
+        """Preia pariurile utilizatorului de pe Betfair."""
+        from app.services.betfair_client import betfair_client
+
+        try:
+            if not betfair_client.is_connected():
+                connected = await betfair_client.connect()
+                if not connected:
+                    return {"error": "Nu m-am putut conecta la Betfair"}
+
+            summary = await betfair_client.get_all_bets_summary()
+            return summary
+
+        except Exception as e:
+            logger.error(f"Error fetching bets: {e}")
+            return {"error": str(e)}
+
+    async def chat_with_bets(self, message: str) -> str:
+        """Chat cu informații despre pariurile utilizatorului."""
+        message_lower = message.lower()
+
+        # Check if user is asking about their bets
+        bet_keywords = ["pariuri", "pariu", "pariat", "plasate", "active", "câștigat", "castigat",
+                        "pierdut", "sold", "cont", "bani", "profit", "istoric"]
+
+        is_asking_about_bets = any(kw in message_lower for kw in bet_keywords)
+
+        if is_asking_about_bets:
+            bets_data = await self.fetch_my_bets()
+
+            if "error" in bets_data:
+                return await self.chat(message + f"\n\n⚠️ Nu am putut accesa pariurile: {bets_data['error']}")
+
+            # Format bets context
+            context = "\n\n📊 PARIURILE TALE DIN CONT BETFAIR:\n"
+            context += f"- Pariuri active: {bets_data.get('current_count', 0)}\n"
+            context += f"- Miză totală activă: {bets_data.get('total_staked_current', 0)} RON\n"
+            context += f"- Pariuri finalizate (7 zile): {bets_data.get('settled_count', 0)}\n"
+            context += f"- Câștigate: {bets_data.get('won_count', 0)}\n"
+            context += f"- Pierdute: {bets_data.get('lost_count', 0)}\n"
+            context += f"- Profit total: {bets_data.get('total_profit', 0)} RON\n"
+
+            # Add current bets details
+            current_bets = bets_data.get('current_bets', [])
+            if current_bets:
+                context += "\nPariuri active:\n"
+                for bet in current_bets[:5]:
+                    context += f"  • {bet.get('marketId', 'N/A')} - Miză: {bet.get('sizeMatched', 0)} @ {bet.get('averagePriceMatched', 0)}\n"
+
+            return await self.chat(message + context)
+
+        # If not asking about bets, use normal flow
+        return await self.chat_with_betfair(message)
+
 
 ai_chat = AIChat()
