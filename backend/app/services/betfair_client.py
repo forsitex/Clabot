@@ -17,13 +17,15 @@ class BetfairClient:
     Gestionează autentificarea, căutarea meciurilor și plasarea pariurilor.
     """
 
-    # Use .ro endpoints for Romanian accounts
+    # Use .ro endpoint for login (required for Romanian accounts)
     IDENTITY_URL = "https://identitysso-cert.betfair.ro/api/certlogin"
-    API_URL = "https://api.betfair.ro/exchange/betting/rest/v1.0"
 
-    # Fallback to global endpoints
+    # Use global API endpoint (works for all accounts)
+    API_URL = "https://api.betfair.com/exchange/betting/rest/v1.0"
+
+    # Fallback endpoints
     IDENTITY_URL_GLOBAL = "https://identitysso-cert.betfair.com/api/certlogin"
-    API_URL_GLOBAL = "https://api.betfair.com/exchange/betting/rest/v1.0"
+    API_URL_RO = "https://api.betfair.ro/exchange/betting/rest/v1.0"
 
     FOOTBALL_EVENT_TYPE_ID = "1"
     BASKETBALL_EVENT_TYPE_ID = "7522"
