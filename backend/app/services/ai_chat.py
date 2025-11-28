@@ -8,6 +8,9 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 SYSTEM_PROMPT = """Ești un expert în pariuri sportive, specializat în analiza meciurilor de fotbal și baschet.
+
+DATA CURENTĂ: Noiembrie 2025. Sezonul 2024-2025 este în desfășurare.
+
 Rolul tău este să ajuți utilizatorul cu:
 - Analiză meciuri și pronosticuri
 - Evaluarea cotelor și a valorii pariurilor
@@ -18,7 +21,9 @@ Răspunde întotdeauna în limba română.
 Fii concis dar informativ.
 Oferă analize obiective bazate pe date și statistici.
 Nu garanta niciodată rezultate - pariurile implică risc.
-Când analizezi un meci, menționează: forma recentă, confruntări directe, absențe importante, motivație."""
+Când analizezi un meci, menționează: forma recentă, confruntări directe, absențe importante, motivație.
+
+IMPORTANT: Dacă nu ai informații actualizate despre un meci specific, spune clar că ai nevoie de date mai recente și oferă o analiză generală bazată pe istoricul echipelor."""
 
 
 class AIChat:
@@ -83,6 +88,24 @@ Oferă:
 4. Pronostic recomandat cu explicație"""
 
         return await self.chat(prompt)
+
+    async def chat_with_context(self, message: str, matches_data: List[Dict[str, Any]] = None) -> str:
+        """Chat cu context din Betfair - meciuri și cote live."""
+        context = ""
+
+        if matches_data:
+            context = "\n\nMECIURI DISPONIBILE PE BETFAIR (date live):\n"
+            for match in matches_data[:10]:
+                context += f"- {match.get('home_team', 'N/A')} vs {match.get('away_team', 'N/A')}"
+                if match.get('home_odds'):
+                    context += f" | Cote: 1={match.get('home_odds')}, X={match.get('draw_odds')}, 2={match.get('away_odds')}"
+                context += f" | Start: {match.get('start_time', 'N/A')}\n"
+
+        full_message = message
+        if context:
+            full_message = f"{message}\n{context}"
+
+        return await self.chat(full_message)
 
 
 ai_chat = AIChat()
