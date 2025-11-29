@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 from app.api.routes import router as api_router
-from app.api.websocket import websocket_endpoint, logs_websocket_endpoint, broadcast_bot_state, broadcast_notification
+from app.api.websocket import websocket_endpoint, broadcast_bot_state, broadcast_notification
 from app.config import get_settings
 from app.services.bot_engine import bot_engine
 
@@ -140,7 +140,6 @@ app.add_middleware(
 app.include_router(api_router, prefix="/api")
 
 app.add_api_websocket_route("/ws", websocket_endpoint)
-app.add_api_websocket_route("/api/ws/logs", logs_websocket_endpoint)
 
 
 # Serve frontend static files in production
