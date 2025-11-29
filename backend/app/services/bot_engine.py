@@ -61,7 +61,7 @@ class BotEngine:
         return True
 
     def get_all_teams(self) -> List[Team]:
-        """Returnează toate echipele din Google Sheets."""
+        """Returnează toate echipele din Google Sheets cu progresie actualizată."""
         if not self._sheets_client or not self._sheets_client.is_connected():
             logger.warning("Google Sheets nu este conectat")
             return list(self._teams.values())
@@ -78,22 +78,54 @@ class BotEngine:
 
                 # Read team data from sheet
                 try:
-                    records = sheet.get_all_records()
-                    if len(records) >= 2:
-                        # Row 2 contains team progression info
-                        team_info = records[0] if records else {}
+                    # Get row 2 which contains progression info
+                    # Format: --- PROGRESIE --- | Pierdere Cumulată: X | Pas: Y | Ultima Miză: Z
+                    row2_values = sheet.row_values(2)
 
-                        # Extract team data
-                        team = Team(
-                            id=str(uuid4()),
-                            name=sheet_title,
-                            betfair_id="",
-                            sport="football",
-                            league="",
-                            country="",
-                            status=TeamStatus.ACTIVE
-                        )
-                        teams.append(team)
+                    # Parse progression data
+                    cumulative_loss = 0.0
+                    progression_step = 0
+                    last_stake = 0.0
+
+                    if len(row2_values) >= 4:
+                        # Column B: "Pierdere Cumulată: X"
+                        if len(row2_values) > 1:
+                            try:
+                                loss_str = row2_values[1].replace("Pierdere Cumulată:", "").strip()
+                                cumulative_loss = float(loss_str) if loss_str else 0.0
+                            except:
+                                cumulative_loss = 0.0
+
+                        # Column C: "Pas: Y"
+                        if len(row2_values) > 2:
+                            try:
+                                step_str = row2_values[2].replace("Pas:", "").strip()
+                                progression_step = int(step_str) if step_str else 0
+                            except:
+                                progression_step = 0
+
+                        # Column D: "Ultima Miză: Z"
+                        if len(row2_values) > 3:
+                            try:
+                                stake_str = row2_values[3].replace("Ultima Miză:", "").strip()
+                                last_stake = float(stake_str) if stake_str else 0.0
+                            except:
+                                last_stake = 0.0
+
+                    # Extract team data
+                    team = Team(
+                        id=str(uuid4()),
+                        name=sheet_title,
+                        betfair_id="",
+                        sport="football",
+                        league="",
+                        country="",
+                        cumulative_loss=cumulative_loss,
+                        progression_step=progression_step,
+                        last_stake=last_stake if last_stake > 0 else 100.0,
+                        status=TeamStatus.ACTIVE
+                    )
+                    teams.append(team)
                 except Exception as e:
                     logger.error(f"Eroare la citirea sheet-ului {sheet_title}: {e}")
                     continue
