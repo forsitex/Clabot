@@ -41,6 +41,11 @@ class Team(BaseModel):
     last_stake: float = Field(default=100.0, gt=0, description="Last stake placed")
     progression_step: int = Field(default=0, ge=0, description="Current progression step")
     status: TeamStatus = Field(default=TeamStatus.ACTIVE, description="Team status")
+    # Statistics
+    total_matches: int = Field(default=0, ge=0, description="Total matches played")
+    matches_won: int = Field(default=0, ge=0, description="Matches won")
+    matches_lost: int = Field(default=0, ge=0, description="Matches lost")
+    total_profit: float = Field(default=0.0, description="Total profit/loss in RON")
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 

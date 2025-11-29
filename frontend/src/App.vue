@@ -4,7 +4,6 @@ import { RouterView, RouterLink, useRoute, useRouter } from "vue-router";
 import {
   LayoutDashboard,
   Users,
-  History,
   Settings,
   LogOut,
   MessageCircle,
@@ -65,7 +64,6 @@ onUnmounted(() => {
 const navItems = [
   { path: "/", name: "Dashboard", icon: LayoutDashboard },
   { path: "/teams", name: "Echipe", icon: Users },
-  { path: "/history", name: "Istoric", icon: History },
   { path: "/settings", name: "Setări", icon: Settings },
 ];
 </script>

@@ -129,6 +129,37 @@ class BotEngine:
                                 logger.warning(f"Eroare parsare last_stake pentru {sheet_title}: {e}")
                                 last_stake = 0.0
 
+                    # Calculate statistics from matches (row 3+)
+                    total_matches = 0
+                    matches_won = 0
+                    matches_lost = 0
+                    total_profit = 0.0
+
+                    try:
+                        # Get all records (row 3+)
+                        all_records = sheet.get_all_records()
+
+                        # Skip row 2 (progression info) - it's the first record
+                        matches = all_records[1:] if len(all_records) > 1 else []
+
+                        for match in matches:
+                            status = match.get("Status", "").upper()
+                            if status in ["WON", "LOST"]:
+                                total_matches += 1
+                                if status == "WON":
+                                    matches_won += 1
+                                elif status == "LOST":
+                                    matches_lost += 1
+
+                                # Add profit (can be negative for losses)
+                                try:
+                                    profit = float(match.get("Profit", 0))
+                                    total_profit += profit
+                                except:
+                                    pass
+                    except Exception as e:
+                        logger.warning(f"Eroare calculare statistici pentru {sheet_title}: {e}")
+
                     # Extract team data
                     team = Team(
                         id=str(uuid4()),
@@ -140,7 +171,11 @@ class BotEngine:
                         cumulative_loss=cumulative_loss,
                         progression_step=progression_step,
                         last_stake=last_stake if last_stake > 0 else 100.0,
-                        status=TeamStatus.ACTIVE
+                        status=TeamStatus.ACTIVE,
+                        total_matches=total_matches,
+                        matches_won=matches_won,
+                        matches_lost=matches_lost,
+                        total_profit=total_profit
                     )
                     teams.append(team)
                 except Exception as e:
