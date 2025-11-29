@@ -61,7 +61,7 @@ class BotEngine:
         return True
 
     def get_all_teams(self) -> List[Team]:
-        """Returnează toate echipele din Google Sheets cu progresie actualizată."""
+        """Returnează toate echipele din Google Sheets (Index + statistici din sheet-uri)."""
         from app.services.google_sheets import google_sheets_client
 
         if not google_sheets_client.is_connected():
@@ -72,121 +72,59 @@ class BotEngine:
             return list(self._teams.values())
 
         try:
-            # Get all team sheets (excluding Index sheet)
-            all_sheets = google_sheets_client._spreadsheet.worksheets()
+            teams_data = google_sheets_client.load_teams()
             teams = []
 
-            for sheet in all_sheets:
-                sheet_title = sheet.title
-                if sheet_title == "Index":
+            for team_data in teams_data:
+                team_name = team_data.get("name", "")
+                if not team_name:
                     continue
 
-                # Read team data from sheet
+                total_matches = 0
+                matches_won = 0
+                matches_lost = 0
+                total_profit = 0.0
+
                 try:
-                    # Get row 2 which contains progression info
-                    # Format: --- PROGRESIE --- | Pierdere Cumulată: X | Pas: Y | Ultima Miză: Z
-                    row2_values = sheet.row_values(2)
+                    sheet = google_sheets_client._spreadsheet.worksheet(team_name)
+                    all_records = sheet.get_all_records()
 
-                    # Parse progression data
-                    cumulative_loss = 0.0
-                    progression_step = 0
-                    last_stake = 0.0
+                    for match in all_records:
+                        status = str(match.get("Status", "")).strip().upper()
 
-                    if len(row2_values) >= 4:
-                        # Column B: "Pierdere Cumulată: X"
-                        if len(row2_values) > 1:
+                        if status in ["WON", "LOST"]:
+                            total_matches += 1
+                            if status == "WON":
+                                matches_won += 1
+                            elif status == "LOST":
+                                matches_lost += 1
+
                             try:
-                                # Extract number after colon
-                                loss_text = row2_values[1]
-                                if ":" in loss_text:
-                                    loss_str = loss_text.split(":")[-1].strip()
-                                    cumulative_loss = float(loss_str) if loss_str else 0.0
-                            except Exception as e:
-                                logger.warning(f"Eroare parsare cumulative_loss pentru {sheet_title}: {e}")
-                                cumulative_loss = 0.0
+                                profit = float(match.get("Profit", 0))
+                                total_profit += profit
+                            except:
+                                pass
 
-                        # Column C: "Pas: Y"
-                        if len(row2_values) > 2:
-                            try:
-                                # Extract number after colon
-                                step_text = row2_values[2]
-                                if ":" in step_text:
-                                    step_str = step_text.split(":")[-1].strip()
-                                    progression_step = int(step_str) if step_str else 0
-                            except Exception as e:
-                                logger.warning(f"Eroare parsare progression_step pentru {sheet_title}: {e}")
-                                progression_step = 0
-
-                        # Column D: "Ultima Miză: Z"
-                        if len(row2_values) > 3:
-                            try:
-                                # Extract number after colon
-                                stake_text = row2_values[3]
-                                if ":" in stake_text:
-                                    stake_str = stake_text.split(":")[-1].strip()
-                                    last_stake = float(stake_str) if stake_str else 0.0
-                            except Exception as e:
-                                logger.warning(f"Eroare parsare last_stake pentru {sheet_title}: {e}")
-                                last_stake = 0.0
-
-                    # Calculate statistics from matches (row 3+)
-                    total_matches = 0
-                    matches_won = 0
-                    matches_lost = 0
-                    total_profit = 0.0
-
-                    try:
-                        # Get all records (row 3+)
-                        all_records = sheet.get_all_records()
-
-                        # Skip row 2 (progression info) - it's the first record
-                        matches = all_records[1:] if len(all_records) > 1 else []
-
-                        logger.info(f"Team {sheet_title}: {len(matches)} matches found in sheet")
-
-                        for match in matches:
-                            status = str(match.get("Status", "")).strip().upper()
-                            logger.info(f"Match status for {sheet_title}: '{status}'")
-
-                            if status in ["WON", "LOST"]:
-                                total_matches += 1
-                                if status == "WON":
-                                    matches_won += 1
-                                elif status == "LOST":
-                                    matches_lost += 1
-
-                                # Add profit (can be negative for losses)
-                                try:
-                                    profit = float(match.get("Profit", 0))
-                                    total_profit += profit
-                                except:
-                                    pass
-
-                        logger.info(f"Team {sheet_title} stats: {total_matches} matches, {matches_won} won, {matches_lost} lost, profit: {total_profit}")
-                    except Exception as e:
-                        logger.warning(f"Eroare calculare statistici pentru {sheet_title}: {e}")
-
-                    # Extract team data
-                    team = Team(
-                        id=str(uuid4()),
-                        name=sheet_title,
-                        betfair_id="",
-                        sport="football",
-                        league="",
-                        country="",
-                        cumulative_loss=cumulative_loss,
-                        progression_step=progression_step,
-                        last_stake=last_stake if last_stake > 0 else 100.0,
-                        status=TeamStatus.ACTIVE,
-                        total_matches=total_matches,
-                        matches_won=matches_won,
-                        matches_lost=matches_lost,
-                        total_profit=total_profit
-                    )
-                    teams.append(team)
                 except Exception as e:
-                    logger.error(f"Eroare la citirea sheet-ului {sheet_title}: {e}")
-                    continue
+                    logger.warning(f"Eroare calculare statistici pentru {team_name}: {e}")
+
+                team = Team(
+                    id=team_data.get("id", str(uuid4())),
+                    name=team_name,
+                    betfair_id=team_data.get("betfair_id", ""),
+                    sport=team_data.get("sport", "football"),
+                    league=team_data.get("league", ""),
+                    country=team_data.get("country", ""),
+                    cumulative_loss=float(team_data.get("cumulative_loss", 0)),
+                    progression_step=int(team_data.get("progression_step", 0)),
+                    last_stake=float(team_data.get("last_stake", 100)),
+                    status=TeamStatus.ACTIVE if team_data.get("status") == "active" else TeamStatus.PAUSED,
+                    total_matches=total_matches,
+                    matches_won=matches_won,
+                    matches_lost=matches_lost,
+                    total_profit=total_profit
+                )
+                teams.append(team)
 
             return teams
         except Exception as e:

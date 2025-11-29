@@ -219,7 +219,6 @@ class GoogleSheetsClient:
     def _create_team_sheet(self, team_name: str) -> Any:
         """Creează un sheet separat pentru o echipă."""
         try:
-            # Check if sheet exists
             try:
                 worksheet = self._spreadsheet.worksheet(team_name)
                 logger.info(f"Sheet '{team_name}' există deja")
@@ -227,13 +226,10 @@ class GoogleSheetsClient:
             except:
                 pass
 
-            # Create new sheet with headers
             headers = ["Data", "Meci", "Competiție", "Cotă", "Miză", "Status", "Profit", "Bet ID"]
             worksheet = self._spreadsheet.add_worksheet(title=team_name, rows=100, cols=len(headers))
             worksheet.append_row(headers)
-
-            # Add progression info in first data row (will be updated)
-            worksheet.append_row(["--- PROGRESIE ---", "Pierdere Cumulată: 0", "Pas: 0", "Ultima Miză: 100", "", "", "", ""])
+            self._apply_status_formatting(worksheet)
 
             logger.info(f"Sheet creat pentru echipa: {team_name}")
             return worksheet
@@ -241,6 +237,77 @@ class GoogleSheetsClient:
         except Exception as e:
             logger.error(f"Eroare la crearea sheet-ului pentru {team_name}: {e}")
             return None
+
+    def _apply_status_formatting(self, worksheet) -> bool:
+        """Aplică conditional formatting pentru coloana Status (F)."""
+        try:
+            from gspread_formatting import (
+                ConditionalFormatRule, BooleanRule, BooleanCondition,
+                CellFormat, Color, set_conditional_format_rules,
+                get_conditional_format_rules
+            )
+
+            rules = get_conditional_format_rules(worksheet)
+
+            won_rule = ConditionalFormatRule(
+                ranges=["F2:F1000"],
+                booleanRule=BooleanRule(
+                    condition=BooleanCondition("TEXT_EQ", ["WON"]),
+                    format=CellFormat(
+                        backgroundColor=Color(0.7, 0.9, 0.7),
+                        textFormat={"foregroundColor": Color(0.1, 0.5, 0.1), "bold": True}
+                    )
+                )
+            )
+
+            lost_rule = ConditionalFormatRule(
+                ranges=["F2:F1000"],
+                booleanRule=BooleanRule(
+                    condition=BooleanCondition("TEXT_EQ", ["LOST"]),
+                    format=CellFormat(
+                        backgroundColor=Color(0.95, 0.7, 0.7),
+                        textFormat={"foregroundColor": Color(0.7, 0.1, 0.1), "bold": True}
+                    )
+                )
+            )
+
+            pending_rule = ConditionalFormatRule(
+                ranges=["F2:F1000"],
+                booleanRule=BooleanRule(
+                    condition=BooleanCondition("TEXT_EQ", ["PENDING"]),
+                    format=CellFormat(
+                        backgroundColor=Color(0.7, 0.85, 0.95),
+                        textFormat={"foregroundColor": Color(0.1, 0.3, 0.6), "bold": True}
+                    )
+                )
+            )
+
+            programat_rule = ConditionalFormatRule(
+                ranges=["F2:F1000"],
+                booleanRule=BooleanRule(
+                    condition=BooleanCondition("TEXT_EQ", ["PROGRAMAT"]),
+                    format=CellFormat(
+                        backgroundColor=Color(0.85, 0.85, 0.85),
+                        textFormat={"foregroundColor": Color(0.4, 0.4, 0.4), "bold": False}
+                    )
+                )
+            )
+
+            rules.append(won_rule)
+            rules.append(lost_rule)
+            rules.append(pending_rule)
+            rules.append(programat_rule)
+            set_conditional_format_rules(worksheet, rules)
+
+            logger.info(f"Conditional formatting aplicat pentru {worksheet.title}")
+            return True
+
+        except ImportError:
+            logger.warning("gspread_formatting nu este instalat - skip conditional formatting")
+            return False
+        except Exception as e:
+            logger.error(f"Eroare la aplicarea formatting-ului: {e}")
+            return False
 
     def save_matches_for_team(self, team_name: str, matches: List[Dict[str, Any]]) -> bool:
         """
@@ -288,20 +355,23 @@ class GoogleSheetsClient:
             return False
 
     def update_team_progression(self, team_name: str, cumulative_loss: float, step: int, last_stake: float) -> bool:
-        """Actualizează progresia în sheet-ul echipei."""
+        """Actualizează progresia în Index sheet."""
         if not self._connected:
             return False
 
         try:
-            worksheet = self._spreadsheet.worksheet(team_name)
-            # Update row 2 (progression info)
-            worksheet.update("A2:D2", [[
-                "--- PROGRESIE ---",
-                f"Pierdere Cumulată: {cumulative_loss}",
-                f"Pas: {step}",
-                f"Ultima Miză: {last_stake}"
-            ]])
-            return True
+            worksheet = self._spreadsheet.worksheet("Index")
+            cell = worksheet.find(team_name)
+
+            if cell:
+                row = cell.row
+                worksheet.update_cell(row, 7, cumulative_loss)
+                worksheet.update_cell(row, 8, last_stake)
+                worksheet.update_cell(row, 9, step)
+                worksheet.update_cell(row, 12, datetime.utcnow().isoformat())
+                logger.info(f"Progresie actualizată în Index pentru {team_name}")
+                return True
+            return False
         except Exception as e:
             logger.error(f"Eroare la actualizarea progresiei pentru {team_name}: {e}")
             return False
@@ -513,57 +583,38 @@ class GoogleSheetsClient:
 
     def update_team_progression_after_result(self, team_name: str, won: bool, stake: float) -> bool:
         """
-        Actualizează progresia echipei după rezultatul unui pariu.
-
-        Args:
-            team_name: Numele echipei
-            won: True dacă pariul a fost câștigat
-            stake: Miza pariului
-
-        Returns:
-            True dacă actualizarea a reușit
+        Actualizează progresia echipei în Index sheet după rezultatul unui pariu.
         """
         if not self._connected:
             return False
 
         try:
-            worksheet = self._spreadsheet.worksheet(team_name)
+            worksheet = self._spreadsheet.worksheet("Index")
+            cell = worksheet.find(team_name)
 
-            # Row 2 contains progression info
-            # Format: --- PROGRESIE | Pierdere Cumulată: X | Pas: Y | Ultima Miză: Z
-            current_values = worksheet.row_values(2)
+            if not cell:
+                logger.warning(f"Echipa {team_name} nu a fost găsită în Index")
+                return False
+
+            row = cell.row
+            row_values = worksheet.row_values(row)
+
+            current_loss = float(row_values[6]) if len(row_values) > 6 and row_values[6] else 0
+            current_step = int(row_values[8]) if len(row_values) > 8 and row_values[8] else 0
 
             if won:
-                # Reset progression
                 new_cumulative_loss = 0
                 new_step = 0
                 logger.info(f"WIN pentru {team_name} - Reset progresie")
             else:
-                # Increment progression
-                # Parse current values
-                cumulative_loss = 0
-                step = 0
-
-                for val in current_values:
-                    if "Pierdere Cumulată:" in str(val):
-                        try:
-                            cumulative_loss = float(str(val).split(":")[1].strip())
-                        except:
-                            pass
-                    elif "Pas:" in str(val):
-                        try:
-                            step = int(str(val).split(":")[1].strip())
-                        except:
-                            pass
-
-                new_cumulative_loss = cumulative_loss + stake
-                new_step = step + 1
+                new_cumulative_loss = current_loss + stake
+                new_step = current_step + 1
                 logger.info(f"LOSE pentru {team_name} - Progresie: loss={new_cumulative_loss}, step={new_step}")
 
-            # Update row 2
-            worksheet.update_cell(2, 2, f"Pierdere Cumulată: {new_cumulative_loss}")
-            worksheet.update_cell(2, 3, f"Pas: {new_step}")
-            worksheet.update_cell(2, 4, f"Ultima Miză: {stake}")
+            worksheet.update_cell(row, 7, new_cumulative_loss)
+            worksheet.update_cell(row, 8, stake)
+            worksheet.update_cell(row, 9, new_step)
+            worksheet.update_cell(row, 12, datetime.utcnow().isoformat())
 
             return True
 
