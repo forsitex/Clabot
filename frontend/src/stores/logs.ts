@@ -4,55 +4,40 @@ import { ref } from "vue";
 export const useLogsStore = defineStore("logs", () => {
   const logs = ref<string[]>([]);
   const isLive = ref(false);
-  let ws: WebSocket | null = null;
-
-  function addLog(log: string) {
-    logs.value.push(log);
-    
-    // Keep only last 1000 logs to avoid memory issues
-    if (logs.value.length > 1000) {
-      logs.value = logs.value.slice(-1000);
-    }
-  }
+  const isLoading = ref(false);
+  let intervalId: number | null = null;
 
   function clearLogs() {
     logs.value = [];
   }
 
-  function startLive() {
-    if (ws) {
-      return; // Already connected
+  async function fetchLogs() {
+    isLoading.value = true;
+    try {
+      const response = await fetch("/api/logs?lines=200");
+      const data = await response.json();
+      if (data.success && data.logs) {
+        logs.value = data.logs;
+      }
+    } catch (error) {
+      logs.value = [`[Error fetching logs: ${error}]`];
+    } finally {
+      isLoading.value = false;
     }
+  }
 
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/api/ws/logs`;
+  function startLive() {
+    if (intervalId) return;
 
-    ws = new WebSocket(wsUrl);
-
-    ws.onopen = () => {
-      isLive.value = true;
-      addLog("[Connected to live logs]");
-    };
-
-    ws.onmessage = (event) => {
-      addLog(event.data);
-    };
-
-    ws.onerror = (error) => {
-      addLog(`[Error: ${error}]`);
-    };
-
-    ws.onclose = () => {
-      isLive.value = false;
-      addLog("[Disconnected from live logs]");
-      ws = null;
-    };
+    fetchLogs();
+    intervalId = window.setInterval(fetchLogs, 5000);
+    isLive.value = true;
   }
 
   function stopLive() {
-    if (ws) {
-      ws.close();
-      ws = null;
+    if (intervalId) {
+      clearInterval(intervalId);
+      intervalId = null;
     }
     isLive.value = false;
   }
@@ -60,8 +45,9 @@ export const useLogsStore = defineStore("logs", () => {
   return {
     logs,
     isLive,
-    addLog,
+    isLoading,
     clearLogs,
+    fetchLogs,
     startLive,
     stopLive,
   };
