@@ -222,6 +222,7 @@ class GoogleSheetsClient:
             try:
                 worksheet = self._spreadsheet.worksheet(team_name)
                 logger.info(f"Sheet '{team_name}' există deja")
+                self._apply_status_formatting(worksheet)
                 return worksheet
             except:
                 pass
