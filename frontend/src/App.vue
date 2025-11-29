@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   Users,
   Settings,
+  FileText,
   LogOut,
   MessageCircle,
 } from "lucide-vue-next";
@@ -65,6 +66,7 @@ const navItems = [
   { path: "/", name: "Dashboard", icon: LayoutDashboard },
   { path: "/teams", name: "Echipe", icon: Users },
   { path: "/settings", name: "Setări", icon: Settings },
+  { path: "/logs", name: "Logs", icon: FileText },
 ];
 </script>
 
