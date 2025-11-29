@@ -247,7 +247,7 @@ class BetfairClient:
         market_filter = {
             "eventTypeIds": [event_type_id],
             "marketStartTime": {
-                "from": datetime.utcnow().isoformat() + "Z",
+                "from": (datetime.utcnow() - timedelta(hours=3)).isoformat() + "Z",  # Include LIVE matches (started in last 3h)
                 "to": (datetime.utcnow() + timedelta(days=7)).isoformat() + "Z"
             }
         }

@@ -434,10 +434,22 @@ class BotEngine:
                         logger.info(f"Plasare pariu: {team_name} - {event_name} - Miză: {stake} @ {odds}")
 
                         # Find market on Betfair and place bet
-                        events = await betfair_client.list_events(
-                            event_type_id="1",
-                            text_query=team_name
-                        )
+                        # Extract main team name (remove FC, United, etc for better matching)
+                        search_terms = [team_name]
+                        # Try without common suffixes
+                        for suffix in [" FC", " United FC", " United"]:
+                            if team_name.endswith(suffix):
+                                search_terms.append(team_name[:-len(suffix)])
+
+                        events = None
+                        for search_term in search_terms:
+                            events = await betfair_client.list_events(
+                                event_type_id="1",
+                                text_query=search_term
+                            )
+                            if events:
+                                logger.info(f"Găsit evenimente cu search term: {search_term}")
+                                break
 
                         if not events:
                             logger.warning(f"Nu s-a găsit evenimentul pe Betfair: {event_name}")
@@ -447,8 +459,13 @@ class BotEngine:
                         event_id = None
                         for ev in events:
                             ev_name = ev.get("event", {}).get("name", "")
-                            if team_name.lower() in ev_name.lower():
-                                event_id = ev.get("event", {}).get("id")
+                            # Check if any search term matches
+                            for search_term in search_terms:
+                                if search_term.lower() in ev_name.lower():
+                                    event_id = ev.get("event", {}).get("id")
+                                    logger.info(f"Match găsit: {ev_name} (event_id: {event_id})")
+                                    break
+                            if event_id:
                                 break
 
                         if not event_id:
