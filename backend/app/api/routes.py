@@ -544,3 +544,20 @@ async def apply_sheets_formatting(username: str = Depends(get_current_user)):
     """Aplică conditional formatting pe toate sheet-urile echipelor."""
     count = google_sheets_client.apply_formatting_to_all_teams()
     return {"success": True, "sheets_updated": count}
+
+
+@router.get("/logs")
+async def get_logs(lines: int = 100):
+    """Returnează ultimele N linii din logs."""
+    import subprocess
+    try:
+        result = subprocess.run(
+            ["journalctl", "-u", "betfair-bot", "-n", str(lines), "--no-pager"],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        log_lines = result.stdout.strip().split("\n") if result.stdout else []
+        return {"success": True, "logs": log_lines}
+    except Exception as e:
+        return {"success": False, "logs": [], "error": str(e)}
