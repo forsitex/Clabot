@@ -243,14 +243,16 @@ class GoogleSheetsClient:
         try:
             from gspread_formatting import (
                 ConditionalFormatRule, BooleanRule, BooleanCondition,
-                CellFormat, Color, ConditionalFormatRules, TextFormat
+                CellFormat, Color, ConditionalFormatRules, TextFormat, GridRange
             )
 
             rules = ConditionalFormatRules(worksheet)
             rules.clear()
 
+            range_f = GridRange.from_a1_range("F2:F1000", worksheet)
+
             won_rule = ConditionalFormatRule(
-                ranges=["F2:F1000"],
+                ranges=[range_f],
                 booleanRule=BooleanRule(
                     condition=BooleanCondition("TEXT_EQ", ["WON"]),
                     format=CellFormat(
@@ -261,7 +263,7 @@ class GoogleSheetsClient:
             )
 
             lost_rule = ConditionalFormatRule(
-                ranges=["F2:F1000"],
+                ranges=[range_f],
                 booleanRule=BooleanRule(
                     condition=BooleanCondition("TEXT_EQ", ["LOST"]),
                     format=CellFormat(
@@ -272,7 +274,7 @@ class GoogleSheetsClient:
             )
 
             pending_rule = ConditionalFormatRule(
-                ranges=["F2:F1000"],
+                ranges=[range_f],
                 booleanRule=BooleanRule(
                     condition=BooleanCondition("TEXT_EQ", ["PENDING"]),
                     format=CellFormat(
@@ -283,7 +285,7 @@ class GoogleSheetsClient:
             )
 
             programat_rule = ConditionalFormatRule(
-                ranges=["F2:F1000"],
+                ranges=[range_f],
                 booleanRule=BooleanRule(
                     condition=BooleanCondition("TEXT_EQ", ["PROGRAMAT"]),
                     format=CellFormat(
