@@ -243,11 +243,11 @@ class GoogleSheetsClient:
         try:
             from gspread_formatting import (
                 ConditionalFormatRule, BooleanRule, BooleanCondition,
-                CellFormat, Color, set_conditional_format_rules,
-                get_conditional_format_rules
+                CellFormat, Color, ConditionalFormatRules
             )
 
-            rules = get_conditional_format_rules(worksheet)
+            rules = ConditionalFormatRules(worksheet)
+            rules.clear()
 
             won_rule = ConditionalFormatRule(
                 ranges=["F2:F1000"],
@@ -297,13 +297,13 @@ class GoogleSheetsClient:
             rules.append(lost_rule)
             rules.append(pending_rule)
             rules.append(programat_rule)
-            set_conditional_format_rules(worksheet, rules)
+            rules.save()
 
             logger.info(f"Conditional formatting aplicat pentru {worksheet.title}")
             return True
 
-        except ImportError:
-            logger.warning("gspread_formatting nu este instalat - skip conditional formatting")
+        except ImportError as e:
+            logger.warning(f"gspread_formatting import error: {e}")
             return False
         except Exception as e:
             logger.error(f"Eroare la aplicarea formatting-ului: {e}")
