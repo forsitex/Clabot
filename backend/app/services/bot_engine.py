@@ -61,8 +61,47 @@ class BotEngine:
         return True
 
     def get_all_teams(self) -> List[Team]:
-        """Returnează toate echipele."""
-        return list(self._teams.values())
+        """Returnează toate echipele din Google Sheets."""
+        if not self._sheets_client or not self._sheets_client.is_connected():
+            logger.warning("Google Sheets nu este conectat")
+            return list(self._teams.values())
+
+        try:
+            # Get all team sheets (excluding Index sheet)
+            all_sheets = self._sheets_client._spreadsheet.worksheets()
+            teams = []
+
+            for sheet in all_sheets:
+                sheet_title = sheet.title
+                if sheet_title == "Index":
+                    continue
+
+                # Read team data from sheet
+                try:
+                    records = sheet.get_all_records()
+                    if len(records) >= 2:
+                        # Row 2 contains team progression info
+                        team_info = records[0] if records else {}
+
+                        # Extract team data
+                        team = Team(
+                            id=str(uuid4()),
+                            name=sheet_title,
+                            betfair_id="",
+                            sport="football",
+                            league="",
+                            country="",
+                            status=TeamStatus.ACTIVE
+                        )
+                        teams.append(team)
+                except Exception as e:
+                    logger.error(f"Eroare la citirea sheet-ului {sheet_title}: {e}")
+                    continue
+
+            return teams
+        except Exception as e:
+            logger.error(f"Eroare la citirea echipelor din Google Sheets: {e}")
+            return list(self._teams.values())
 
     def get_active_teams(self) -> List[Team]:
         """Returnează doar echipele active."""
