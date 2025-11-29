@@ -243,7 +243,7 @@ class GoogleSheetsClient:
         try:
             from gspread_formatting import (
                 ConditionalFormatRule, BooleanRule, BooleanCondition,
-                CellFormat, Color, ConditionalFormatRules
+                CellFormat, Color, ConditionalFormatRules, TextFormat
             )
 
             rules = ConditionalFormatRules(worksheet)
@@ -255,7 +255,7 @@ class GoogleSheetsClient:
                     condition=BooleanCondition("TEXT_EQ", ["WON"]),
                     format=CellFormat(
                         backgroundColor=Color(0.7, 0.9, 0.7),
-                        textFormat={"foregroundColor": Color(0.1, 0.5, 0.1), "bold": True}
+                        textFormat=TextFormat(foregroundColor=Color(0.1, 0.5, 0.1), bold=True)
                     )
                 )
             )
@@ -266,7 +266,7 @@ class GoogleSheetsClient:
                     condition=BooleanCondition("TEXT_EQ", ["LOST"]),
                     format=CellFormat(
                         backgroundColor=Color(0.95, 0.7, 0.7),
-                        textFormat={"foregroundColor": Color(0.7, 0.1, 0.1), "bold": True}
+                        textFormat=TextFormat(foregroundColor=Color(0.7, 0.1, 0.1), bold=True)
                     )
                 )
             )
@@ -277,7 +277,7 @@ class GoogleSheetsClient:
                     condition=BooleanCondition("TEXT_EQ", ["PENDING"]),
                     format=CellFormat(
                         backgroundColor=Color(0.7, 0.85, 0.95),
-                        textFormat={"foregroundColor": Color(0.1, 0.3, 0.6), "bold": True}
+                        textFormat=TextFormat(foregroundColor=Color(0.1, 0.3, 0.6), bold=True)
                     )
                 )
             )
@@ -288,7 +288,7 @@ class GoogleSheetsClient:
                     condition=BooleanCondition("TEXT_EQ", ["PROGRAMAT"]),
                     format=CellFormat(
                         backgroundColor=Color(0.85, 0.85, 0.85),
-                        textFormat={"foregroundColor": Color(0.4, 0.4, 0.4), "bold": False}
+                        textFormat=TextFormat(foregroundColor=Color(0.4, 0.4, 0.4), bold=False)
                     )
                 )
             )
