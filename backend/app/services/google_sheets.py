@@ -581,9 +581,13 @@ def auto_configure_google_sheets():
 
     settings = get_settings()
     spreadsheet_id = settings.google_sheets_spreadsheet_id
+    credentials_path = settings.google_sheets_credentials_path
 
     if spreadsheet_id:
-        google_sheets_client.configure(spreadsheet_id=spreadsheet_id)
+        google_sheets_client.configure(
+            spreadsheet_id=spreadsheet_id,
+            credentials_path=credentials_path
+        )
         logger.info(f"Google Sheets auto-configured with spreadsheet: {spreadsheet_id}")
     else:
         logger.warning("GOOGLE_SHEETS_SPREADSHEET_ID not found in settings")
