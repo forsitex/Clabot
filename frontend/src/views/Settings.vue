@@ -62,6 +62,8 @@ async function handleSave(): Promise<void> {
       max_progression_steps: settings.value.max_progression_steps,
     };
     settings.value = await api.updateSettings(updates);
+    // Re-check Betfair status after save
+    await checkBetfairStatus();
     showMessage("success", "Setările au fost salvate!");
   } catch (error) {
     showMessage("error", "Eroare la salvarea setărilor");
