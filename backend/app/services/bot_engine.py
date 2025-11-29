@@ -62,13 +62,18 @@ class BotEngine:
 
     def get_all_teams(self) -> List[Team]:
         """Returnează toate echipele din Google Sheets cu progresie actualizată."""
-        if not self._sheets_client or not self._sheets_client.is_connected():
+        from app.services.google_sheets import google_sheets_client
+
+        if not google_sheets_client.is_connected():
+            google_sheets_client.connect()
+
+        if not google_sheets_client.is_connected():
             logger.warning("Google Sheets nu este conectat")
             return list(self._teams.values())
 
         try:
             # Get all team sheets (excluding Index sheet)
-            all_sheets = self._sheets_client._spreadsheet.worksheets()
+            all_sheets = google_sheets_client._spreadsheet.worksheets()
             teams = []
 
             for sheet in all_sheets:
