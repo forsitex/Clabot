@@ -440,14 +440,14 @@ class BetfairClient:
         Returns:
             Răspunsul plasării
         """
-        # Use LIVE KEY for placing bets (if available)
-        live_key = os.environ.get("BETFAIR_LIVE_KEY")
+        # Use LIVE KEY for placing bets (if available), otherwise use regular app key
+        live_key = os.environ.get("BETFAIR_LIVE_KEY") or self._app_key
         if not live_key:
-            logger.error("BETFAIR_LIVE_KEY not configured - cannot place bets")
+            logger.error("BETFAIR_APP_KEY not configured - cannot place bets")
             return PlaceOrderResponse(
                 success=False,
                 status="ERROR",
-                error_message="Live key not configured"
+                error_message="App key not configured"
             )
 
         params = {
