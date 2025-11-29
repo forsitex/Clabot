@@ -194,3 +194,47 @@ async def broadcast_notification(message: str, level: str = "info"):
         },
         "timestamp": datetime.utcnow().isoformat()
     })
+
+
+# Logs WebSocket Manager
+logs_manager = ConnectionManager()
+
+
+async def logs_websocket_endpoint(websocket: WebSocket):
+    """WebSocket endpoint pentru streaming logs în timp real."""
+    await logs_manager.connect(websocket)
+
+    try:
+        # Stream logs from journalctl
+        import subprocess
+
+        process = subprocess.Popen(
+            ["journalctl", "-u", "betfair-bot", "-f", "--no-pager"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            bufsize=1
+        )
+
+        while True:
+            line = process.stdout.readline()
+            if line:
+                await websocket.send_text(line.strip())
+
+            # Check if websocket is still connected
+            try:
+                await asyncio.wait_for(websocket.receive_text(), timeout=0.1)
+            except asyncio.TimeoutError:
+                continue
+            except:
+                break
+
+    except WebSocketDisconnect:
+        logs_manager.disconnect(websocket)
+        if 'process' in locals():
+            process.kill()
+    except Exception as e:
+        logger.error(f"Eroare Logs WebSocket: {e}")
+        logs_manager.disconnect(websocket)
+        if 'process' in locals():
+            process.kill()
