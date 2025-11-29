@@ -446,7 +446,10 @@ class GoogleSheetsClient:
             return []
 
     def delete_team(self, team_id: str) -> bool:
-        """Șterge o echipă din Google Sheets."""
+        """Șterge o echipă din Google Sheets (Index + sheet-ul echipei)."""
+        if not self._connected:
+            self.connect()
+
         if not self._connected:
             return False
 
@@ -455,8 +458,20 @@ class GoogleSheetsClient:
             cell = worksheet.find(team_id)
 
             if cell:
+                row_values = worksheet.row_values(cell.row)
+                team_name = row_values[1] if len(row_values) > 1 else None
+
                 worksheet.delete_rows(cell.row)
-                logger.info(f"Echipă ștearsă: {team_id}")
+                logger.info(f"Echipă ștearsă din Index: {team_id}")
+
+                if team_name:
+                    try:
+                        team_sheet = self._spreadsheet.worksheet(team_name)
+                        self._spreadsheet.del_worksheet(team_sheet)
+                        logger.info(f"Sheet șters: {team_name}")
+                    except Exception as e:
+                        logger.warning(f"Nu s-a putut șterge sheet-ul {team_name}: {e}")
+
                 return True
             return False
 

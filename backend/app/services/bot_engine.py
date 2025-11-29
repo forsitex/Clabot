@@ -163,12 +163,16 @@ class BotEngine:
         return team
 
     def delete_team(self, team_id: str) -> bool:
-        """Șterge o echipă."""
+        """Șterge o echipă din Google Sheets."""
+        from app.services.google_sheets import google_sheets_client
+
         if team_id in self._teams:
-            team = self._teams.pop(team_id)
-            logger.info(f"Echipă ștearsă: {team.name}")
-            return True
-        return False
+            self._teams.pop(team_id)
+
+        success = google_sheets_client.delete_team(team_id)
+        if success:
+            logger.info(f"Echipă ștearsă: {team_id}")
+        return success
 
     def reset_team_progression(self, team_id: str) -> Optional[Team]:
         """Resetează progresia unei echipe."""
