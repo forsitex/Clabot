@@ -537,3 +537,10 @@ async def clear_ai_chat():
     """Șterge istoricul conversației AI."""
     ai_chat.clear_history()
     return {"success": True, "message": "Istoric șters"}
+
+
+@router.post("/sheets/apply-formatting")
+async def apply_sheets_formatting(username: str = Depends(get_current_user)):
+    """Aplică conditional formatting pe toate sheet-urile echipelor."""
+    count = google_sheets_client.apply_formatting_to_all_teams()
+    return {"success": True, "sheets_updated": count}

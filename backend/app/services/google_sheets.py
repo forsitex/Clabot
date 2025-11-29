@@ -309,6 +309,27 @@ class GoogleSheetsClient:
             logger.error(f"Eroare la aplicarea formatting-ului: {e}")
             return False
 
+    def apply_formatting_to_all_teams(self) -> int:
+        """Aplică conditional formatting pe toate sheet-urile echipelor existente."""
+        if not self._connected:
+            self.connect()
+
+        if not self._connected:
+            return 0
+
+        count = 0
+        try:
+            all_sheets = self._spreadsheet.worksheets()
+            for sheet in all_sheets:
+                if sheet.title in ["Index", "Istoric"]:
+                    continue
+                if self._apply_status_formatting(sheet):
+                    count += 1
+            logger.info(f"Formatting aplicat pe {count} sheet-uri")
+        except Exception as e:
+            logger.error(f"Eroare la aplicarea formatting-ului global: {e}")
+        return count
+
     def save_matches_for_team(self, team_name: str, matches: List[Dict[str, Any]]) -> bool:
         """
         Salvează meciurile programate în sheet-ul echipei.
