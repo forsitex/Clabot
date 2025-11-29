@@ -577,14 +577,15 @@ google_sheets_client = GoogleSheetsClient()
 # Auto-configure from environment variables
 def auto_configure_google_sheets():
     """Auto-configure Google Sheets from environment variables."""
-    import os
+    from app.config import get_settings
 
-    spreadsheet_id = os.environ.get("GOOGLE_SHEETS_SPREADSHEET_ID", "")
+    settings = get_settings()
+    spreadsheet_id = settings.google_sheets_spreadsheet_id
 
     if spreadsheet_id:
         google_sheets_client.configure(spreadsheet_id=spreadsheet_id)
         logger.info(f"Google Sheets auto-configured with spreadsheet: {spreadsheet_id}")
     else:
-        logger.warning("GOOGLE_SHEETS_SPREADSHEET_ID not found in environment")
+        logger.warning("GOOGLE_SHEETS_SPREADSHEET_ID not found in settings")
 
 auto_configure_google_sheets()
