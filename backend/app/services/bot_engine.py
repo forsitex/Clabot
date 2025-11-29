@@ -142,8 +142,12 @@ class BotEngine:
                         # Skip row 2 (progression info) - it's the first record
                         matches = all_records[1:] if len(all_records) > 1 else []
 
+                        logger.info(f"Team {sheet_title}: {len(matches)} matches found in sheet")
+
                         for match in matches:
-                            status = match.get("Status", "").upper()
+                            status = str(match.get("Status", "")).strip().upper()
+                            logger.info(f"Match status for {sheet_title}: '{status}'")
+
                             if status in ["WON", "LOST"]:
                                 total_matches += 1
                                 if status == "WON":
@@ -157,6 +161,8 @@ class BotEngine:
                                     total_profit += profit
                                 except:
                                     pass
+
+                        logger.info(f"Team {sheet_title} stats: {total_matches} matches, {matches_won} won, {matches_lost} lost, profit: {total_profit}")
                     except Exception as e:
                         logger.warning(f"Eroare calculare statistici pentru {sheet_title}: {e}")
 
