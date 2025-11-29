@@ -33,6 +33,7 @@ const message = ref<{ type: "success" | "error"; text: string } | null>(null);
 
 onMounted(async () => {
   await loadSettings();
+  await checkBetfairStatus();
 });
 
 async function loadSettings(): Promise<void> {
@@ -72,7 +73,6 @@ async function handleSave(): Promise<void> {
 async function testBetfair(): Promise<void> {
   isTesting.value.betfair = true;
   try {
-    await handleSave();
     const result = await api.testBetfairConnection();
     if (result.success) {
       settings.value.betfair_connected = true;
@@ -85,6 +85,15 @@ async function testBetfair(): Promise<void> {
     showMessage("error", "Eroare la testarea conexiunii Betfair");
   } finally {
     isTesting.value.betfair = false;
+  }
+}
+
+async function checkBetfairStatus(): Promise<void> {
+  try {
+    const status = await api.getBetfairStatus();
+    settings.value.betfair_connected = status.connected;
+  } catch (error) {
+    console.error("Error checking Betfair status:", error);
   }
 }
 
@@ -167,38 +176,15 @@ async function handleReset(): Promise<void> {
               v-if="isTesting.betfair"
               class="h-4 w-4 animate-spin mr-1"
             />
-            Testează
+            Test Conexiune
           </button>
         </div>
       </div>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label class="label">App Key</label>
-          <input
-            v-model="settings.betfair_app_key"
-            type="text"
-            class="input"
-            placeholder="Betfair App Key"
-          />
-        </div>
-        <div>
-          <label class="label">Username</label>
-          <input
-            v-model="settings.betfair_username"
-            type="text"
-            class="input"
-            placeholder="Betfair Username"
-          />
-        </div>
-        <div class="md:col-span-2">
-          <label class="label">Password</label>
-          <input
-            v-model="settings.betfair_password"
-            type="password"
-            class="input"
-            placeholder="••••••••"
-          />
-        </div>
+      <div class="text-sm text-gray-600">
+        <p>Credențialele Betfair sunt configurate automat din server.</p>
+        <p class="mt-2">
+          Click pe "Test Conexiune" pentru a verifica conexiunea la Betfair API.
+        </p>
       </div>
     </div>
 

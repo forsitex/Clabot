@@ -456,25 +456,23 @@ async def update_settings(updates: SettingsUpdate):
     return updated
 
 
+@router.get("/settings/betfair-status")
+async def get_betfair_status():
+    """Returnează statusul conexiunii Betfair."""
+    return {
+        "connected": betfair_client.is_connected(),
+        "configured": True  # Always true since auto-configured from .env
+    }
+
+
 @router.post("/settings/test-betfair", response_model=ApiResponse)
 async def test_betfair_connection():
     """Testează conexiunea la Betfair API."""
-    settings = settings_manager.get_settings()
-
-    if not settings_manager.is_betfair_configured():
-        return ApiResponse(
-            success=False,
-            message="Credențialele Betfair nu sunt configurate"
-        )
-
-    betfair_client.configure(
-        app_key=settings.betfair_app_key,
-        username=settings.betfair_username,
-        password=settings.betfair_password
-    )
-
-    connected = await betfair_client.connect()
-    settings_manager.set_betfair_connected(connected)
+    # Try to connect if not already connected
+    if not betfair_client.is_connected():
+        connected = await betfair_client.connect()
+    else:
+        connected = True
 
     if connected:
         return ApiResponse(success=True, message="Conectat la Betfair API")

@@ -211,6 +211,14 @@ export const updateSettings = async (
   return response.data;
 };
 
+export const getBetfairStatus = async (): Promise<{
+  connected: boolean;
+  configured: boolean;
+}> => {
+  const response = await api.get("/settings/betfair-status");
+  return response.data;
+};
+
 export const testBetfairConnection = async (): Promise<ApiResponse> => {
   const response = await api.post("/settings/test-betfair");
   return response.data;
