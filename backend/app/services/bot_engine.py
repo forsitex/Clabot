@@ -96,25 +96,37 @@ class BotEngine:
                         # Column B: "Pierdere Cumulată: X"
                         if len(row2_values) > 1:
                             try:
-                                loss_str = row2_values[1].replace("Pierdere Cumulată:", "").strip()
-                                cumulative_loss = float(loss_str) if loss_str else 0.0
-                            except:
+                                # Extract number after colon
+                                loss_text = row2_values[1]
+                                if ":" in loss_text:
+                                    loss_str = loss_text.split(":")[-1].strip()
+                                    cumulative_loss = float(loss_str) if loss_str else 0.0
+                            except Exception as e:
+                                logger.warning(f"Eroare parsare cumulative_loss pentru {sheet_title}: {e}")
                                 cumulative_loss = 0.0
 
                         # Column C: "Pas: Y"
                         if len(row2_values) > 2:
                             try:
-                                step_str = row2_values[2].replace("Pas:", "").strip()
-                                progression_step = int(step_str) if step_str else 0
-                            except:
+                                # Extract number after colon
+                                step_text = row2_values[2]
+                                if ":" in step_text:
+                                    step_str = step_text.split(":")[-1].strip()
+                                    progression_step = int(step_str) if step_str else 0
+                            except Exception as e:
+                                logger.warning(f"Eroare parsare progression_step pentru {sheet_title}: {e}")
                                 progression_step = 0
 
                         # Column D: "Ultima Miză: Z"
                         if len(row2_values) > 3:
                             try:
-                                stake_str = row2_values[3].replace("Ultima Miză:", "").strip()
-                                last_stake = float(stake_str) if stake_str else 0.0
-                            except:
+                                # Extract number after colon
+                                stake_text = row2_values[3]
+                                if ":" in stake_text:
+                                    stake_str = stake_text.split(":")[-1].strip()
+                                    last_stake = float(stake_str) if stake_str else 0.0
+                            except Exception as e:
+                                logger.warning(f"Eroare parsare last_stake pentru {sheet_title}: {e}")
                                 last_stake = 0.0
 
                     # Extract team data
