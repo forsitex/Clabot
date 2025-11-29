@@ -540,6 +540,7 @@ class BetfairClient:
         to_date = datetime.utcnow().isoformat() + "Z"
 
         params = {
+            "betStatus": "SETTLED",
             "settledDateRange": {
                 "from": from_date,
                 "to": to_date
