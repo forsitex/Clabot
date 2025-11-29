@@ -25,9 +25,30 @@
 
 ### SSH
 
+**Conectare simplă:**
+
 ```bash
 ssh root@89.45.83.59
 # Password: pRv?wkb?p1eDr7
+```
+
+**Conectare cu sshpass (fără prompt parolă):**
+
+```bash
+sshpass -p 'pRv?wkb?p1eDr7' ssh -o StrictHostKeyChecking=no root@89.45.83.59
+```
+
+**Conectare + comandă directă:**
+
+```bash
+# Restart service
+sshpass -p 'pRv?wkb?p1eDr7' ssh -o StrictHostKeyChecking=no root@89.45.83.59 "systemctl restart betfair-bot && sleep 5 && systemctl status betfair-bot"
+
+# Vezi logs
+sshpass -p 'pRv?wkb?p1eDr7' ssh -o StrictHostKeyChecking=no root@89.45.83.59 "journalctl -u betfair-bot -n 50 --no-pager"
+
+# Rebuild frontend
+sshpass -p 'pRv?wkb?p1eDr7' ssh -o StrictHostKeyChecking=no root@89.45.83.59 "cd /opt/betfair-bot/frontend && npm run build"
 ```
 
 ---
@@ -43,10 +64,86 @@ ssh root@89.45.83.59
 **Ce face:**
 
 1. Git add + commit + push
-2. Pull pe VPS
-3. Restart backend
+2. SSH pe VPS + pull
+3. Restart backend service
 4. Verifică status
-5. Arată logs
+5. Arată logs recente
+
+**Script complet (`deploy.sh`):**
+
+```bash
+#!/bin/bash
+
+# Colors for output
+BLUE='\033[0;34m'
+GREEN='\033[0;32m'
+NC='\033[0m' # No Color
+
+echo -e "${BLUE}🚀 Starting deployment...${NC}"
+
+# Get commit message from argument or use default
+COMMIT_MSG="${1:-Update}"
+
+# Add all changes
+echo -e "${BLUE}📦 Adding changes...${NC}"
+git add .
+
+# Commit
+echo -e "${BLUE}💾 Committing: $COMMIT_MSG${NC}"
+git commit -m "$COMMIT_MSG"
+
+# Push to GitHub
+echo -e "${BLUE}⬆️  Pushing to GitHub...${NC}"
+git push origin main
+
+# Deploy to VPS
+echo -e "${BLUE}🔄 Deploying to VPS...${NC}"
+sshpass -p 'pRv?wkb?p1eDr7' ssh -o StrictHostKeyChecking=no root@89.45.83.59 << 'EOF'
+cd /opt/betfair-bot
+
+echo "Pulling latest code..."
+git pull origin main
+
+echo "Restarting backend..."
+systemctl restart betfair-bot
+
+# Wait for service to start
+sleep 3
+
+# Check if service is running
+if systemctl is-active --quiet betfair-bot; then
+    echo "✅ Backend restarted"
+else
+    echo "❌ Backend failed to start"
+    systemctl status betfair-bot
+    exit 1
+fi
+EOF
+
+# Check deployment status
+echo -e "${BLUE}📊 Checking status...${NC}"
+sshpass -p 'pRv?wkb?p1eDr7' ssh -o StrictHostKeyChecking=no root@89.45.83.59 "systemctl is-active betfair-bot"
+
+if [ $? -eq 0 ]; then
+    echo "✅ Service is running"
+else
+    echo "❌ Service is not running"
+fi
+
+# Show recent logs
+echo -e "${BLUE}📋 Recent logs:${NC}"
+sshpass -p 'pRv?wkb?p1eDr7' ssh -o StrictHostKeyChecking=no root@89.45.83.59 "journalctl -u betfair-bot -n 20 --no-pager"
+
+echo -e "${GREEN}✅ Deployment complete!${NC}"
+echo -e "${GREEN}🌐 Dashboard: http://89.45.83.59${NC}"
+echo -e "${GREEN}📊 Logs: http://89.45.83.59/logs${NC}"
+```
+
+**Permisiuni (prima dată):**
+
+```bash
+chmod +x deploy.sh
+```
 
 ### Exemple
 
@@ -58,9 +155,70 @@ ssh root@89.45.83.59
 
 ---
 
-## 🛠️ Comenzi Utile pe VPS
+## 🛠️ Comenzi Utile
 
-### Status & Logs
+### Status & Logs (de pe local)
+
+```bash
+# Status serviciu
+sshpass -p 'pRv?wkb?p1eDr7' ssh -o StrictHostKeyChecking=no root@89.45.83.59 "systemctl status betfair-bot"
+
+# Logs live (Ctrl+C pentru a opri)
+sshpass -p 'pRv?wkb?p1eDr7' ssh -o StrictHostKeyChecking=no root@89.45.83.59 "journalctl -u betfair-bot -f"
+
+# Ultimele 100 linii
+sshpass -p 'pRv?wkb?p1eDr7' ssh -o StrictHostKeyChecking=no root@89.45.83.59 "journalctl -u betfair-bot -n 100 --no-pager"
+
+# Logs cu erori
+sshpass -p 'pRv?wkb?p1eDr7' ssh -o StrictHostKeyChecking=no root@89.45.83.59 "journalctl -u betfair-bot -p err --no-pager"
+```
+
+### Control Serviciu (de pe local)
+
+```bash
+# Restart
+sshpass -p 'pRv?wkb?p1eDr7' ssh -o StrictHostKeyChecking=no root@89.45.83.59 "systemctl restart betfair-bot"
+
+# Stop
+sshpass -p 'pRv?wkb?p1eDr7' ssh -o StrictHostKeyChecking=no root@89.45.83.59 "systemctl stop betfair-bot"
+
+# Start
+sshpass -p 'pRv?wkb?p1eDr7' ssh -o StrictHostKeyChecking=no root@89.45.83.59 "systemctl start betfair-bot"
+
+# Restart + verificare
+sshpass -p 'pRv?wkb?p1eDr7' ssh -o StrictHostKeyChecking=no root@89.45.83.59 "systemctl restart betfair-bot && sleep 3 && systemctl status betfair-bot"
+```
+
+### Update Manual (de pe local)
+
+```bash
+# Pull + restart
+sshpass -p 'pRv?wkb?p1eDr7' ssh -o StrictHostKeyChecking=no root@89.45.83.59 "cd /opt/betfair-bot && git pull && systemctl restart betfair-bot"
+
+# Rebuild frontend
+sshpass -p 'pRv?wkb?p1eDr7' ssh -o StrictHostKeyChecking=no root@89.45.83.59 "cd /opt/betfair-bot/frontend && npm run build"
+```
+
+### Verificări (de pe local)
+
+```bash
+# Verifică .env
+sshpass -p 'pRv?wkb?p1eDr7' ssh -o StrictHostKeyChecking=no root@89.45.83.59 "cat /opt/betfair-bot/backend/.env"
+
+# Verifică certificate Betfair
+sshpass -p 'pRv?wkb?p1eDr7' ssh -o StrictHostKeyChecking=no root@89.45.83.59 "ls -la /opt/betfair-bot/backend/certs/"
+
+# Verifică Google credentials
+sshpass -p 'pRv?wkb?p1eDr7' ssh -o StrictHostKeyChecking=no root@89.45.83.59 "ls -la /opt/betfair-bot/backend/credentials/"
+
+# Verifică disk space
+sshpass -p 'pRv?wkb?p1eDr7' ssh -o StrictHostKeyChecking=no root@89.45.83.59 "df -h"
+
+# Verifică memory usage
+sshpass -p 'pRv?wkb?p1eDr7' ssh -o StrictHostKeyChecking=no root@89.45.83.59 "free -h"
+```
+
+### Comenzi pe VPS (după SSH)
 
 ```bash
 # Status serviciu
@@ -71,27 +229,6 @@ journalctl -u betfair-bot -f
 
 # Ultimele 100 linii
 journalctl -u betfair-bot -n 100 --no-pager
-```
-
-### Control Serviciu
-
-```bash
-# Restart
-systemctl restart betfair-bot
-
-# Stop
-systemctl stop betfair-bot
-
-# Start
-systemctl start betfair-bot
-```
-
-### Update Manual
-
-```bash
-cd /opt/betfair-bot
-git pull
-systemctl restart betfair-bot
 ```
 
 ### Script Helper
