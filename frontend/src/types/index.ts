@@ -9,6 +9,10 @@ export interface Team {
   last_stake: number;
   progression_step: number;
   status: "active" | "paused";
+  total_matches: number;
+  matches_won: number;
+  matches_lost: number;
+  total_profit: number;
   created_at: string;
   updated_at: string;
 }

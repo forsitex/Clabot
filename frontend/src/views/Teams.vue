@@ -183,6 +183,30 @@ function formatCurrency(value: number): string {
               <p class="font-semibold">{{ team.progression_step }} / 7</p>
             </div>
 
+            <div class="text-right">
+              <p class="text-sm text-gray-500">Meciuri</p>
+              <p class="font-semibold text-gray-900">
+                <span class="text-green-600">{{ team.matches_won }}</span> /
+                <span class="text-red-600">{{ team.matches_lost }}</span>
+              </p>
+            </div>
+
+            <div class="text-right">
+              <p class="text-sm text-gray-500">Profit Total</p>
+              <p
+                class="font-semibold"
+                :class="
+                  team.total_profit > 0
+                    ? 'text-green-600'
+                    : team.total_profit < 0
+                    ? 'text-red-600'
+                    : 'text-gray-900'
+                "
+              >
+                {{ formatCurrency(team.total_profit) }}
+              </p>
+            </div>
+
             <div class="flex items-center space-x-2">
               <button
                 v-if="team.status === 'active'"
