@@ -483,6 +483,9 @@ async def test_betfair_connection():
 @router.post("/settings/test-google-sheets", response_model=ApiResponse)
 async def test_google_sheets_connection():
     """Testează conexiunea la Google Sheets."""
+    from app.config import get_settings
+
+    app_settings = get_settings()
     settings = settings_manager.get_settings()
 
     if not settings_manager.is_google_sheets_configured():
@@ -493,7 +496,7 @@ async def test_google_sheets_connection():
 
     google_sheets_client.configure(
         spreadsheet_id=settings.google_sheets_spreadsheet_id,
-        credentials_path=settings.google_sheets_credentials_path
+        credentials_path=app_settings.google_sheets_credentials_path
     )
 
     connected = google_sheets_client.connect()
