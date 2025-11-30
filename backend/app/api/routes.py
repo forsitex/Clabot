@@ -123,10 +123,18 @@ async def search_teams_betfair(q: str = ""):
             text_query=q
         )
 
+        # Skip keywords pentru echipe rezerve/tineret
+        skip_keywords = ["(Res)", "U19", "U21", "U23", "Women", "Feminin", "II", "B)"]
+
         # Extragem numele unice ale echipelor din evenimente
         team_names = set()
         for event in events[:20]:
             event_name = event.get("event", {}).get("name", "")
+
+            # Skip meciuri cu echipe rezerve/tineret
+            if any(kw in event_name for kw in skip_keywords):
+                continue
+
             # Evenimentele sunt "Team A v Team B"
             if " v " in event_name:
                 parts = event_name.split(" v ")
@@ -223,6 +231,12 @@ async def create_team(team_create: TeamCreate):
                     event_id = event_data.get("id", "")
                     event_name = event_data.get("name", "")
                     competition = event.get("competitionName", "")
+
+                    # Skip reserve/youth teams
+                    skip_keywords = ["(Res)", "U19", "U21", "U23", "Women", "Feminin", "II", "B)"]
+                    if any(kw in event_name for kw in skip_keywords):
+                        logger.info(f"Skip echipă rezerve/tineret: {event_name}")
+                        continue
 
                     # Get odds and start time from market catalogue
                     odds = ""
