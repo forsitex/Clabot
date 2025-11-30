@@ -225,8 +225,10 @@ async def create_team(team_create: TeamCreate):
                     })
 
                 if matches:
-                    google_sheets_client.save_matches_for_team(team.name, matches)
-                    logger.info(f"Saved {len(matches)} matches for {team.name}")
+                    # Sortare meciuri cronologic după start_time
+                    matches_sorted = sorted(matches, key=lambda x: x.get("start_time", ""))
+                    google_sheets_client.save_matches_for_team(team.name, matches_sorted)
+                    logger.info(f"Saved {len(matches_sorted)} matches for {team.name} (sorted by date)")
                 else:
                     logger.warning(f"No matches found for {team.name}")
 

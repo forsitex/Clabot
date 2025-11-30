@@ -475,6 +475,7 @@ class BotEngine:
                         continue
 
                     event_name = match.get("Meci", "")
+                    match_date_str = match.get("Data", "")  # Format: 2025-11-29T21:45
                     odds_str = match.get("Cotă", "")
 
                     if not odds_str:
@@ -525,21 +526,35 @@ class BotEngine:
                         logger.warning(f"Nu s-a găsit evenimentul pe Betfair: {event_name}")
                         continue
 
-                    # Find matching event
+                    # Find matching event BY DATE
+                    # Extragem doar data (YYYY-MM-DD) din match_date_str pentru comparare
+                    match_date_only = match_date_str[:10] if match_date_str else ""  # "2025-11-29"
+
                     event_id = None
+                    matched_event_name = None
                     for ev in events:
-                        ev_name = ev.get("event", {}).get("name", "")
-                        # Check if any search term matches
+                        ev_data = ev.get("event", {})
+                        ev_name = ev_data.get("name", "")
+                        ev_open_date = ev_data.get("openDate", "")  # "2025-12-04T20:00:00.000Z"
+                        ev_date_only = ev_open_date[:10] if ev_open_date else ""  # "2025-12-04"
+
+                        # Verificăm dacă numele se potrivește ȘI data e aceeași
+                        name_matches = False
                         for search_term in search_terms:
                             if search_term.lower() in ev_name.lower():
-                                event_id = ev.get("event", {}).get("id")
-                                logger.info(f"Match găsit: {ev_name} (event_id: {event_id})")
+                                name_matches = True
                                 break
-                        if event_id:
+
+                        if name_matches and ev_date_only == match_date_only:
+                            event_id = ev_data.get("id")
+                            matched_event_name = ev_name
+                            logger.info(f"Match găsit cu data corectă: {ev_name} (event_id: {event_id}, data: {ev_date_only})")
                             break
+                        elif name_matches:
+                            logger.info(f"Eveniment găsit dar data nu se potrivește: {ev_name} (Betfair: {ev_date_only}, Sheets: {match_date_only})")
 
                     if not event_id:
-                        logger.warning(f"Nu s-a găsit event_id pentru {team_name}")
+                        logger.warning(f"Nu s-a găsit event_id pentru {team_name} cu data {match_date_only}")
                         continue
 
                     # Get market

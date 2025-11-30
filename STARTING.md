@@ -6,7 +6,6 @@
 
 - **Node.js** 18+ (pentru frontend)
 - **Python** 3.10+ (pentru backend)
-- **ngrok** (pentru proxy Betfair din România)
 
 ### Conturi necesare:
 
@@ -57,9 +56,6 @@ BETFAIR_KEY_BASE64=your_key_base64
 GOOGLE_SHEETS_CREDENTIALS_BASE64=your_credentials_base64
 GOOGLE_SHEETS_SPREADSHEET_ID=your_spreadsheet_id
 
-# Proxy (pentru România)
-BETFAIR_PROXY_URL=http://7.tcp.eu.ngrok.io:PORT
-
 # JWT
 JWT_SECRET_KEY=your_secret_key
 
@@ -73,71 +69,9 @@ BOT_MAX_PROGRESSION_STEPS=10
 
 ---
 
-## 🌐 Configurare Proxy (ngrok) - OBLIGATORIU pentru România
-
-### De ce e necesar?
-
-Betfair API blochează request-urile din România. Folosim ngrok pentru a ruta traficul prin alt server.
-
-### Pasul 1: Instalează ngrok
-
-```bash
-# Mac
-brew install ngrok
-
-# Linux
-snap install ngrok
-
-# Windows - descarcă de pe https://ngrok.com/download
-```
-
-### Pasul 2: Autentifică ngrok
-
-```bash
-ngrok config add-authtoken YOUR_NGROK_AUTH_TOKEN
-```
-
-Obține token-ul de pe: https://dashboard.ngrok.com/get-started/your-authtoken
-
-### Pasul 3: Pornește proxy-ul TCP
-
-```bash
-ngrok tcp 443 --remote-addr=7.tcp.eu.ngrok.io:17724
-```
-
-**SAU** folosește un server din EU:
-
-```bash
-ngrok tcp 443 --region=eu
-```
-
-### Pasul 4: Copiază adresa proxy
-
-După pornire, ngrok afișează:
-
-```
-Forwarding    tcp://7.tcp.eu.ngrok.io:17724 -> localhost:443
-```
-
-Folosește `http://7.tcp.eu.ngrok.io:17724` ca `BETFAIR_PROXY_URL`.
-
-### ⚠️ Notă importantă:
-
-- Proxy-ul trebuie să ruleze **tot timpul** când folosești botul
-- Dacă repornești ngrok, portul se poate schimba
-- Pentru port fix, ai nevoie de ngrok paid plan
-
----
-
 ## ▶️ Pornire Aplicație
 
-### Terminal 1 - Proxy (dacă ești în România)
-
-```bash
-ngrok tcp 443 --region=eu
-```
-
-### Terminal 2 - Backend
+### Terminal 1 - Backend
 
 ```bash
 cd backend
@@ -145,7 +79,7 @@ source venv/bin/activate
 uvicorn app.main:app --reload --port 8000
 ```
 
-### Terminal 3 - Frontend
+### Terminal 2 - Frontend
 
 ```bash
 cd frontend
@@ -262,12 +196,6 @@ Railway va face build și deploy automat la fiecare push.
 ### Eroare: "INVALID_APP_KEY"
 
 - Verifică `BETFAIR_APP_KEY` în `.env`
-- Asigură-te că proxy-ul rulează
-
-### Eroare: "Connection refused"
-
-- Pornește ngrok: `ngrok tcp 443 --region=eu`
-- Actualizează `BETFAIR_PROXY_URL` cu noua adresă
 
 ### Eroare: "Google Sheets not connected"
 

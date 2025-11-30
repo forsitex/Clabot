@@ -114,14 +114,7 @@ class BetfairClient:
             if self._cert_path and self._key_path:
                 cert = (self._cert_path, self._key_path)
 
-            # Check for proxy configuration
-            proxy_url = os.environ.get("BETFAIR_PROXY_URL")
-            proxies = proxy_url if proxy_url else None
-
-            if proxies:
-                logger.info(f"Using proxy: {proxy_url}")
-
-            async with httpx.AsyncClient(cert=cert, proxy=proxies) as client:
+            async with httpx.AsyncClient(cert=cert, timeout=30.0) as client:
                 response = await client.post(
                     self.IDENTITY_URL,
                     headers={"X-Application": self._app_key},
@@ -136,9 +129,6 @@ class BetfairClient:
                 if result.get("loginStatus") == "SUCCESS":
                     self._session_token = result.get("sessionToken")
                     self._connected = True
-                    # Store proxy for future requests
-                    self._proxy_url = proxies
-                    self._http_client = httpx.AsyncClient(proxy=proxies)
                     logger.info("Autentificat la Betfair API")
                     return True
                 else:
@@ -205,12 +195,7 @@ class BetfairClient:
         url = f"{self.API_URL}/{endpoint}/"
 
         try:
-            # Get proxy URL
-            proxy_url = os.environ.get("BETFAIR_PROXY_URL")
-
-            # Create a new client for each request to ensure proxy is used
-            async with httpx.AsyncClient(proxy=proxy_url, timeout=30.0) as client:
-                logger.info(f"API request to {url} via proxy: {proxy_url}")
+            async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(
                     url,
                     headers=self._get_headers(use_live_key=use_live_key),
