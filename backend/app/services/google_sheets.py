@@ -147,7 +147,7 @@ class GoogleSheetsClient:
                         "league": record.get("league", ""),
                         "country": record.get("country", ""),
                         "cumulative_loss": float(record.get("cumulative_loss", 0)),
-                        "last_stake": float(record.get("last_stake", 100)),
+                        "last_stake": float(record.get("last_stake", 0)),
                         "progression_step": int(record.get("progression_step", 0)),
                         "status": record.get("status", "active"),
                         "created_at": record.get("created_at", datetime.utcnow().isoformat()),
@@ -194,7 +194,7 @@ class GoogleSheetsClient:
                 team.get("league", ""),
                 team.get("country", ""),
                 team.get("cumulative_loss", 0),
-                team.get("last_stake", 100),
+                team.get("last_stake", 0),  # 0 până la primul pariu
                 team.get("progression_step", 0),
                 team.get("status", "active"),
                 team.get("created_at", datetime.utcnow().isoformat()),

@@ -10,7 +10,7 @@ import {
   ChevronUp,
   Search,
   Loader2,
-  DollarSign,
+  Pencil,
   Check,
   X,
 } from "lucide-vue-next";
@@ -386,10 +386,7 @@ function formatCurrency(value: number): string {
               </p>
             </div>
             <div>
-              <p class="text-gray-500 flex items-center">
-                <DollarSign class="h-3 w-3 mr-1" />
-                Miză Inițială
-              </p>
+              <p class="text-gray-500">Miză Inițială</p>
               <div
                 v-if="editingStakeTeamId === team.id"
                 class="flex items-center space-x-2 mt-1"
@@ -426,7 +423,7 @@ function formatCurrency(value: number): string {
                   class="p-1 text-blue-600 hover:bg-blue-50 rounded"
                   title="Modifică"
                 >
-                  <DollarSign class="h-3 w-3" />
+                  <Pencil class="h-3 w-3" />
                 </button>
               </div>
             </div>
