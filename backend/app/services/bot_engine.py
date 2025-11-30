@@ -683,8 +683,8 @@ class BotEngine:
                 results["message"] = "Nu s-a putut conecta la Betfair"
                 return results
 
-            # Get settled orders from Betfair
-            settled_orders = await betfair_client.get_settled_orders(days=1)
+            # Get settled orders from Betfair (ultimele 3 zile pentru siguranță)
+            settled_orders = await betfair_client.get_settled_orders(days=3)
 
             # Create a map of bet_id -> settled order
             settled_map = {}
@@ -693,15 +693,28 @@ class BotEngine:
                 if bet_id:
                     settled_map[bet_id] = order
 
-            logger.info(f"Găsite {len(settled_map)} ordine settled pe Betfair")
+            logger.info(f"Găsite {len(settled_map)} ordine settled pe Betfair (ultimele 3 zile)")
+
+            # Log detaliat pentru debugging
+            if settled_orders:
+                logger.info("=== SETTLED ORDERS DE PE BETFAIR ===")
+                for order in settled_orders[:10]:  # Primele 10
+                    logger.info(f"  Bet ID: {order.get('betId')}, Profit: {order.get('profit')}, SettledDate: {order.get('settledDate')}")
+
+            # Log pariuri pending pentru debugging
+            logger.info("=== PARIURI PENDING DIN GOOGLE SHEETS ===")
+            for bet in pending_bets:
+                logger.info(f"  Team: {bet.get('team_name')}, Bet ID: {bet.get('Bet ID')}, Meci: {bet.get('Meci')}")
 
             # Check each pending bet
             for bet in pending_bets:
                 bet_id = str(bet.get("Bet ID", ""))
                 team_name = bet.get("team_name", "")
-                stake = float(bet.get("Miză", 0))
+                meci = bet.get("Meci", "")
+                stake = float(bet.get("Miză", 0) or 0)
 
                 if not bet_id or not team_name:
+                    logger.warning(f"Skip pariu invalid: bet_id={bet_id}, team={team_name}")
                     continue
 
                 if bet_id in settled_map:
@@ -729,9 +742,17 @@ class BotEngine:
                     google_sheets_client.update_team_progression_after_result(team_name, won, stake)
 
                 else:
-                    # Still pending
+                    # Still pending - log mai detaliat
                     results["still_pending"] += 1
-                    logger.info(f"Pariu încă în așteptare: {team_name} - Bet ID: {bet_id}")
+                    logger.info(f"Pariu încă în așteptare: {team_name} - {meci} - Bet ID: {bet_id} (nu e în settled_map)")
+
+                    # Verifică dacă pariul există măcar în current orders
+                    current_orders = await betfair_client.get_current_orders()
+                    found_in_current = any(str(o.get('betId')) == bet_id for o in current_orders)
+                    if found_in_current:
+                        logger.info(f"  → Pariul {bet_id} există în CURRENT ORDERS (meci în desfășurare sau neterminat)")
+                    else:
+                        logger.warning(f"  → Pariul {bet_id} NU există nici în current orders! Posibil problemă.")
 
             results["message"] = f"Verificare completă: {results['won']} WIN, {results['lost']} LOST, {results['still_pending']} în așteptare"
 
