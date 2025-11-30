@@ -69,6 +69,14 @@ export const runBotNow = async (): Promise<ApiResponse> => {
   return response.data;
 };
 
+export const searchTeamsBetfair = async (query: string): Promise<string[]> => {
+  if (query.length < 3) return [];
+  const response = await api.get("/teams/search-betfair", {
+    params: { q: query },
+  });
+  return response.data;
+};
+
 export const getTeams = async (activeOnly = false): Promise<Team[]> => {
   const response = await api.get("/teams", {
     params: { active_only: activeOnly },

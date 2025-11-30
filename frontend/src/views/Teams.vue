@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import {
   Plus,
   Pause,
@@ -8,8 +8,11 @@ import {
   Trash2,
   ChevronDown,
   ChevronUp,
+  Search,
+  Loader2,
 } from "lucide-vue-next";
 import { useTeamsStore } from "@/stores/teams";
+import { searchTeamsBetfair } from "@/services/api";
 import type { Team, TeamCreate } from "@/types";
 
 const teamsStore = useTeamsStore();
@@ -24,9 +27,49 @@ const newTeam = ref<TeamCreate>({
   country: "",
 });
 
+const searchQuery = ref("");
+const searchResults = ref<string[]>([]);
+const isSearching = ref(false);
+const showDropdown = ref(false);
+let searchTimeout: ReturnType<typeof setTimeout> | null = null;
+
 onMounted(() => {
   teamsStore.fetchTeams();
 });
+
+watch(searchQuery, (newVal) => {
+  if (searchTimeout) clearTimeout(searchTimeout);
+
+  if (newVal.length < 3) {
+    searchResults.value = [];
+    showDropdown.value = false;
+    return;
+  }
+
+  isSearching.value = true;
+  searchTimeout = setTimeout(async () => {
+    try {
+      searchResults.value = await searchTeamsBetfair(newVal);
+      showDropdown.value = searchResults.value.length > 0;
+    } catch (e) {
+      searchResults.value = [];
+    } finally {
+      isSearching.value = false;
+    }
+  }, 300);
+});
+
+function selectTeam(teamName: string): void {
+  newTeam.value.name = teamName;
+  searchQuery.value = teamName;
+  showDropdown.value = false;
+}
+
+function handleBlur(): void {
+  setTimeout(() => {
+    showDropdown.value = false;
+  }, 200);
+}
 
 const sortedTeams = computed(() => {
   return [...teamsStore.teams].sort((a, b) => {
@@ -44,6 +87,7 @@ async function handleAddTeam(): Promise<void> {
   await teamsStore.createTeam(newTeam.value);
 
   newTeam.value = { name: "", sport: "football", league: "Auto", country: "" };
+  searchQuery.value = "";
   showAddForm.value = false;
 }
 
@@ -105,15 +149,44 @@ function formatCurrency(value: number): string {
         @submit.prevent="handleAddTeam"
         class="grid grid-cols-1 md:grid-cols-2 gap-4"
       >
-        <div>
-          <label class="label">Nume Echipă</label>
-          <input
-            v-model="newTeam.name"
-            type="text"
-            class="input"
-            placeholder="ex: Real Madrid"
-            required
-          />
+        <div class="relative">
+          <label class="label">Nume Echipă (caută pe Betfair)</label>
+          <div class="relative">
+            <input
+              v-model="searchQuery"
+              type="text"
+              class="input pr-10"
+              placeholder="Scrie min. 3 caractere..."
+              @focus="showDropdown = searchResults.length > 0"
+              @blur="handleBlur"
+            />
+            <div class="absolute right-3 top-1/2 -translate-y-1/2">
+              <Loader2
+                v-if="isSearching"
+                class="h-4 w-4 animate-spin text-gray-400"
+              />
+              <Search v-else class="h-4 w-4 text-gray-400" />
+            </div>
+          </div>
+
+          <div
+            v-if="showDropdown && searchResults.length > 0"
+            class="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto"
+          >
+            <button
+              v-for="team in searchResults"
+              :key="team"
+              type="button"
+              class="w-full px-4 py-2 text-left hover:bg-blue-50 focus:bg-blue-50 focus:outline-none"
+              @mousedown.prevent="selectTeam(team)"
+            >
+              {{ team }}
+            </button>
+          </div>
+
+          <p v-if="newTeam.name" class="mt-1 text-sm text-green-600">
+            ✓ Selectat: {{ newTeam.name }}
+          </p>
         </div>
 
         <div>

@@ -98,6 +98,54 @@ async def run_bot_now():
     )
 
 
+@router.get("/teams/search-betfair")
+async def search_teams_betfair(q: str = ""):
+    """
+    Caută echipe pe Betfair API.
+    Returnează lista de echipe găsite pentru autocomplete.
+    """
+    if len(q) < 3:
+        return []
+
+    from app.services.betfair_client import betfair_client
+    import logging
+    logger = logging.getLogger(__name__)
+
+    try:
+        if not betfair_client.is_connected():
+            await betfair_client.connect()
+
+        if not betfair_client.is_connected():
+            return []
+
+        events = await betfair_client.list_events(
+            event_type_id="1",
+            text_query=q
+        )
+
+        # Extragem numele unice ale echipelor din evenimente
+        team_names = set()
+        for event in events[:20]:
+            event_name = event.get("event", {}).get("name", "")
+            # Evenimentele sunt "Team A v Team B"
+            if " v " in event_name:
+                parts = event_name.split(" v ")
+                for part in parts:
+                    part = part.strip()
+                    # Filtram doar echipele care contin query-ul
+                    if q.lower() in part.lower():
+                        team_names.add(part)
+
+        # Sortam alfabetic si returnam
+        results = sorted(list(team_names))
+        logger.info(f"Search Betfair '{q}': {len(results)} echipe găsite")
+        return results
+
+    except Exception as e:
+        logger.error(f"Eroare căutare Betfair: {e}")
+        return []
+
+
 @router.get("/teams", response_model=List[Team])
 async def get_teams(active_only: bool = False):
     """Returnează lista de echipe."""
