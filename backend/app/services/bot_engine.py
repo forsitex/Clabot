@@ -460,6 +460,13 @@ class BotEngine:
                     continue
 
                 try:
+                    # IMPORTANT: Verifică dacă echipa are deja un pariu PENDING
+                    # Dacă da, NU plasa alt pariu până nu se rezolvă cel curent!
+                    pending_bets = google_sheets_client.get_pending_bets(team_name)
+                    if pending_bets:
+                        logger.info(f"Skip {team_name} - are deja {len(pending_bets)} pariu(ri) PENDING")
+                        continue
+
                     # Get scheduled matches from team's sheet
                     scheduled_matches = google_sheets_client.get_scheduled_matches(team_name)
 
@@ -490,13 +497,16 @@ class BotEngine:
 
                     results["matches_found"] += 1
 
-                    # Calculate stake
+                    # Calculate stake - folosim miza inițială per echipă
                     cumulative_loss = float(team_data.get("cumulative_loss", 0))
                     progression_step = int(team_data.get("progression_step", 0))
+                    team_initial_stake = float(team_data.get("initial_stake", 5))
 
                     stake, stop_loss = staking_service.calculate_stake(
-                        cumulative_loss, odds, progression_step
+                        cumulative_loss, odds, progression_step, team_initial_stake
                     )
+
+                    logger.info(f"{team_name}: initial_stake={team_initial_stake}, loss={cumulative_loss}, step={progression_step} => miză={stake}")
 
                     if stop_loss:
                         logger.warning(f"Stop loss atins pentru {team_name}")

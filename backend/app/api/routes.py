@@ -397,6 +397,38 @@ async def get_team_progression(team_id: str, next_odds: float = 1.5):
     )
 
 
+@router.put("/teams/{team_id}/initial-stake")
+async def update_team_initial_stake(team_id: str, initial_stake: float):
+    """Actualizează miza inițială pentru o echipă."""
+    from app.services.google_sheets import google_sheets_client
+
+    team = bot_engine.get_team(team_id)
+    if not team:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Echipa cu ID {team_id} nu a fost găsită"
+        )
+
+    if initial_stake <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Miza inițială trebuie să fie > 0"
+        )
+
+    if not google_sheets_client.is_connected():
+        google_sheets_client.connect()
+
+    success = google_sheets_client.update_team_initial_stake(team.name, initial_stake)
+
+    if success:
+        return {"success": True, "message": f"Miză inițială actualizată: {initial_stake} RON"}
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Eroare la actualizarea mizei inițiale"
+        )
+
+
 @router.get("/bets", response_model=List[Bet])
 async def get_bets(
     team_id: Optional[str] = None,

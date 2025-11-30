@@ -20,7 +20,8 @@ class StakingService:
         self,
         cumulative_loss: float,
         new_odds: float,
-        progression_step: int
+        progression_step: int,
+        team_initial_stake: float = None  # Miză inițială per echipă (opțional)
     ) -> Tuple[float, bool]:
         """
         Calculează miza pentru următorul pariu.
@@ -29,20 +30,24 @@ class StakingService:
             cumulative_loss: Pierderea cumulată până acum pentru echipă
             new_odds: Cota pentru următorul meci
             progression_step: Pasul curent de progresie
+            team_initial_stake: Miza inițială specifică echipei (dacă e setată)
 
         Returns:
             Tuple[float, bool]: (miza_calculată, stop_loss_atins)
         """
+        # Folosim miza echipei dacă e setată, altfel cea globală
+        initial = team_initial_stake if team_initial_stake is not None else self.initial_stake
+
         if progression_step >= self.max_progression_steps:
             return 0.0, True
 
         if cumulative_loss <= 0:
-            return self.initial_stake, False
+            return initial, False
 
         if new_odds <= 1.0:
             raise ValueError(f"Cota trebuie să fie > 1.0, primită: {new_odds}")
 
-        stake = (cumulative_loss / (new_odds - 1)) + self.initial_stake
+        stake = (cumulative_loss / (new_odds - 1)) + initial
 
         stake = round(stake, 2)
 

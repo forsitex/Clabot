@@ -131,7 +131,7 @@ class GoogleSheetsClient:
         try:
             headers = ["id", "name", "betfair_id", "sport", "league", "country",
                       "cumulative_loss", "last_stake", "progression_step", "status",
-                      "created_at", "updated_at"]
+                      "created_at", "updated_at", "initial_stake"]
             worksheet = self._get_or_create_worksheet("Index", headers)
 
             records = worksheet.get_all_records()
@@ -151,7 +151,8 @@ class GoogleSheetsClient:
                         "progression_step": int(record.get("progression_step", 0)),
                         "status": record.get("status", "active"),
                         "created_at": record.get("created_at", datetime.utcnow().isoformat()),
-                        "updated_at": record.get("updated_at", datetime.utcnow().isoformat())
+                        "updated_at": record.get("updated_at", datetime.utcnow().isoformat()),
+                        "initial_stake": float(record.get("initial_stake", 5))  # Miză inițială per echipă
                     })
 
             logger.info(f"Încărcate {len(teams)} echipe din Google Sheets")
@@ -180,7 +181,7 @@ class GoogleSheetsClient:
             # Save to Index sheet
             headers = ["id", "name", "betfair_id", "sport", "league", "country",
                       "cumulative_loss", "last_stake", "progression_step", "status",
-                      "created_at", "updated_at"]
+                      "created_at", "updated_at", "initial_stake"]
             worksheet = self._get_or_create_worksheet("Index", headers)
 
             cell = worksheet.find(team["id"])
@@ -197,12 +198,13 @@ class GoogleSheetsClient:
                 team.get("progression_step", 0),
                 team.get("status", "active"),
                 team.get("created_at", datetime.utcnow().isoformat()),
-                datetime.utcnow().isoformat()
+                datetime.utcnow().isoformat(),
+                team.get("initial_stake", 5)  # Miză inițială per echipă
             ]
 
             if cell:
                 row_num = cell.row
-                worksheet.update(f"A{row_num}:L{row_num}", [row_data])
+                worksheet.update(f"A{row_num}:M{row_num}", [row_data])
             else:
                 worksheet.append_row(row_data)
 
@@ -398,6 +400,26 @@ class GoogleSheetsClient:
             return False
         except Exception as e:
             logger.error(f"Eroare la actualizarea progresiei pentru {team_name}: {e}")
+            return False
+
+    def update_team_initial_stake(self, team_name: str, initial_stake: float) -> bool:
+        """Actualizează miza inițială pentru o echipă în Index sheet."""
+        if not self._connected:
+            return False
+
+        try:
+            worksheet = self._spreadsheet.worksheet("Index")
+            cell = worksheet.find(team_name)
+
+            if cell:
+                row = cell.row
+                worksheet.update_cell(row, 13, initial_stake)  # Coloana M = initial_stake
+                worksheet.update_cell(row, 12, datetime.utcnow().isoformat())  # updated_at
+                logger.info(f"Miză inițială actualizată pentru {team_name}: {initial_stake} RON")
+                return True
+            return False
+        except Exception as e:
+            logger.error(f"Eroare la actualizarea mizei inițiale pentru {team_name}: {e}")
             return False
 
     def update_match_status(self, team_name: str, event_name: str, status: str, stake: float = None, profit: float = None, bet_id: str = None) -> bool:
