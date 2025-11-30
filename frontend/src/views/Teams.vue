@@ -10,9 +10,12 @@ import {
   ChevronUp,
   Search,
   Loader2,
+  DollarSign,
+  Check,
+  X,
 } from "lucide-vue-next";
 import { useTeamsStore } from "@/stores/teams";
-import { searchTeamsBetfair } from "@/services/api";
+import { searchTeamsBetfair, updateTeamInitialStake } from "@/services/api";
 import type { Team, TeamCreate } from "@/types";
 
 const teamsStore = useTeamsStore();
@@ -32,6 +35,11 @@ const searchResults = ref<string[]>([]);
 const isSearching = ref(false);
 const showDropdown = ref(false);
 let searchTimeout: ReturnType<typeof setTimeout> | null = null;
+
+// Edit initial stake
+const editingStakeTeamId = ref<string | null>(null);
+const editStakeValue = ref<number>(5);
+const isSavingStake = ref(false);
 
 onMounted(() => {
   teamsStore.fetchTeams();
@@ -113,6 +121,30 @@ async function handleDelete(team: Team): Promise<void> {
 
 function toggleExpand(teamId: string): void {
   expandedTeam.value = expandedTeam.value === teamId ? null : teamId;
+}
+
+function startEditStake(team: Team): void {
+  editingStakeTeamId.value = team.id;
+  editStakeValue.value = (team as any).initial_stake || 5;
+}
+
+function cancelEditStake(): void {
+  editingStakeTeamId.value = null;
+}
+
+async function saveStake(team: Team): Promise<void> {
+  if (editStakeValue.value <= 0) return;
+
+  isSavingStake.value = true;
+  try {
+    await updateTeamInitialStake(team.id, editStakeValue.value);
+    await teamsStore.fetchTeams();
+    editingStakeTeamId.value = null;
+  } catch (e) {
+    console.error("Eroare la salvarea mizei:", e);
+  } finally {
+    isSavingStake.value = false;
+  }
 }
 
 function formatCurrency(value: number): string {
@@ -332,7 +364,7 @@ function formatCurrency(value: number): string {
           v-if="expandedTeam === team.id"
           class="mt-4 pt-4 border-t border-gray-100"
         >
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
             <div>
               <p class="text-gray-500">Sport</p>
               <p class="font-medium">
@@ -352,6 +384,51 @@ function formatCurrency(value: number): string {
               <p class="font-medium">
                 {{ new Date(team.created_at).toLocaleDateString("ro-RO") }}
               </p>
+            </div>
+            <div>
+              <p class="text-gray-500 flex items-center">
+                <DollarSign class="h-3 w-3 mr-1" />
+                Miză Inițială
+              </p>
+              <div
+                v-if="editingStakeTeamId === team.id"
+                class="flex items-center space-x-2 mt-1"
+              >
+                <input
+                  v-model.number="editStakeValue"
+                  type="number"
+                  min="1"
+                  step="1"
+                  class="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <button
+                  @click="saveStake(team)"
+                  :disabled="isSavingStake"
+                  class="p-1 text-green-600 hover:bg-green-50 rounded"
+                  title="Salvează"
+                >
+                  <Check class="h-4 w-4" />
+                </button>
+                <button
+                  @click="cancelEditStake"
+                  class="p-1 text-red-600 hover:bg-red-50 rounded"
+                  title="Anulează"
+                >
+                  <X class="h-4 w-4" />
+                </button>
+              </div>
+              <div v-else class="flex items-center space-x-2">
+                <p class="font-medium">
+                  {{ (team as any).initial_stake || 5 }} RON
+                </p>
+                <button
+                  @click="startEditStake(team)"
+                  class="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                  title="Modifică"
+                >
+                  <DollarSign class="h-3 w-3" />
+                </button>
+              </div>
             </div>
           </div>
         </div>

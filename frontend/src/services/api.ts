@@ -117,6 +117,16 @@ export const activateTeam = async (teamId: string): Promise<Team> => {
   return response.data;
 };
 
+export const updateTeamInitialStake = async (
+  teamId: string,
+  initialStake: number
+): Promise<ApiResponse> => {
+  const response = await api.put(`/teams/${teamId}/initial-stake`, null, {
+    params: { initial_stake: initialStake },
+  });
+  return response.data;
+};
+
 export const resetTeamProgression = async (teamId: string): Promise<Team> => {
   const response = await api.post(`/teams/${teamId}/reset`);
   return response.data;
