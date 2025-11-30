@@ -562,9 +562,13 @@ class GoogleSheetsClient:
             logger.error(f"Eroare la încărcarea pariurilor: {e}")
             return []
 
-    def get_pending_bets(self) -> List[Dict[str, Any]]:
+    def get_pending_bets(self, team_name: str = None) -> List[Dict[str, Any]]:
         """
-        Obține toate pariurile cu status PENDING din toate sheet-urile echipelor.
+        Obține pariurile cu status PENDING.
+
+        Args:
+            team_name: Dacă e specificat, returnează doar pentru acea echipă.
+                      Dacă e None, returnează din toate echipele.
 
         Returns:
             Lista de pariuri pending cu team_name inclus
@@ -575,14 +579,8 @@ class GoogleSheetsClient:
         pending_bets = []
 
         try:
-            # Get all teams from Index
-            teams = self.load_teams()
-
-            for team in teams:
-                team_name = team.get("name", "")
-                if not team_name:
-                    continue
-
+            # Dacă avem team_name specific, căutăm doar în acel sheet
+            if team_name:
                 try:
                     worksheet = self._spreadsheet.worksheet(team_name)
                     records = worksheet.get_all_records()
@@ -591,9 +589,30 @@ class GoogleSheetsClient:
                         if record.get("Status") == "PENDING":
                             record["team_name"] = team_name
                             pending_bets.append(record)
-
                 except Exception as e:
                     logger.warning(f"Nu s-a putut citi sheet-ul pentru {team_name}: {e}")
+
+                return pending_bets
+
+            # Altfel, căutăm în toate echipele
+            teams = self.load_teams()
+
+            for team in teams:
+                t_name = team.get("name", "")
+                if not t_name:
+                    continue
+
+                try:
+                    worksheet = self._spreadsheet.worksheet(t_name)
+                    records = worksheet.get_all_records()
+
+                    for record in records:
+                        if record.get("Status") == "PENDING":
+                            record["team_name"] = t_name
+                            pending_bets.append(record)
+
+                except Exception as e:
+                    logger.warning(f"Nu s-a putut citi sheet-ul pentru {t_name}: {e}")
                     continue
 
             logger.info(f"Găsite {len(pending_bets)} pariuri PENDING")
