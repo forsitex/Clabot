@@ -828,7 +828,7 @@ class BotEngine:
             logger.info(f"Actualizare meciuri pentru {len(active_teams)} echipe active")
 
             # Skip keywords pentru echipe rezerve/tineret
-            skip_keywords = ["(Res)", "U19", "U21", "U23", "Women", "Feminin", "II", "B)"]
+            skip_keywords = ["(Res)", "U19", "U21", "U23", "Women", "Feminin", "II", "B)", "(W)"]
 
             for team_data in active_teams:
                 team_name = team_data.get("name", "")

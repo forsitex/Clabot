@@ -124,7 +124,7 @@ async def search_teams_betfair(q: str = ""):
         )
 
         # Skip keywords pentru echipe rezerve/tineret
-        skip_keywords = ["(Res)", "U19", "U21", "U23", "Women", "Feminin", "II", "B)"]
+        skip_keywords = ["(Res)", "U19", "U21", "U23", "Women", "Feminin", "II", "B)", "(W)"]
 
         # Extragem numele unice ale echipelor din evenimente
         team_names = set()
@@ -233,7 +233,7 @@ async def create_team(team_create: TeamCreate):
                     competition = event.get("competitionName", "")
 
                     # Skip reserve/youth teams
-                    skip_keywords = ["(Res)", "U19", "U21", "U23", "Women", "Feminin", "II", "B)"]
+                    skip_keywords = ["(Res)", "U19", "U21", "U23", "Women", "Feminin", "II", "B)", "(W)"]
                     if any(kw in event_name for kw in skip_keywords):
                         logger.info(f"Skip echipă rezerve/tineret: {event_name}")
                         continue
