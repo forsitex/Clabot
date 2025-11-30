@@ -621,11 +621,14 @@ class BotEngine:
                         self.state.bets_placed_today += 1
                         self.state.total_stake_today += stake
 
-                        # Update Google Sheets
+                        # Update Google Sheets - match status
                         google_sheets_client.update_match_status(
                             team_name, event_name, "PENDING",
                             stake=stake, bet_id=place_result.bet_id
                         )
+
+                        # Update last_stake în Index
+                        google_sheets_client.update_last_stake(team_name, stake)
 
                         logger.info(
                             f"Pariu plasat: {team_name} - {event_name} - "

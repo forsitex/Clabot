@@ -422,6 +422,26 @@ class GoogleSheetsClient:
             logger.error(f"Eroare la actualizarea mizei inițiale pentru {team_name}: {e}")
             return False
 
+    def update_last_stake(self, team_name: str, stake: float) -> bool:
+        """Actualizează ultima miză plasată pentru o echipă în Index sheet."""
+        if not self._connected:
+            return False
+
+        try:
+            worksheet = self._spreadsheet.worksheet("Index")
+            cell = worksheet.find(team_name)
+
+            if cell:
+                row = cell.row
+                worksheet.update_cell(row, 8, stake)  # Coloana H = last_stake
+                worksheet.update_cell(row, 12, datetime.utcnow().isoformat())  # updated_at
+                logger.info(f"Ultima miză actualizată pentru {team_name}: {stake} RON")
+                return True
+            return False
+        except Exception as e:
+            logger.error(f"Eroare la actualizarea ultimei mize pentru {team_name}: {e}")
+            return False
+
     def update_match_status(self, team_name: str, event_name: str, status: str, stake: float = None, profit: float = None, bet_id: str = None) -> bool:
         """Actualizează statusul unui meci în sheet-ul echipei."""
         if not self._connected:
