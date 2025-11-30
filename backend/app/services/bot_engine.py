@@ -570,13 +570,32 @@ class BotEngine:
                     market = markets[0]
                     market_id = market.get("marketId", "")
 
-                    # Get selection ID (first runner = home team)
+                    # Get selection ID - găsim runner-ul care conține numele echipei noastre
                     runners = market.get("runners", [])
                     if not runners:
                         logger.warning(f"Nu s-au găsit runners pentru {event_name}")
                         continue
 
-                    selection_id = str(runners[0].get("selectionId", ""))
+                    # Căutăm runner-ul echipei noastre (nu primul runner!)
+                    selection_id = None
+                    selected_runner_name = None
+                    for runner in runners:
+                        runner_name = runner.get("runnerName", "")
+                        # Verificăm dacă numele echipei se potrivește cu runner-ul
+                        for search_term in search_terms:
+                            if search_term.lower() in runner_name.lower():
+                                selection_id = str(runner.get("selectionId", ""))
+                                selected_runner_name = runner_name
+                                break
+                        if selection_id:
+                            break
+
+                    if not selection_id:
+                        logger.warning(f"Nu s-a găsit runner pentru echipa {team_name} în meciul {event_name}")
+                        logger.warning(f"  Runners disponibili: {[r.get('runnerName') for r in runners]}")
+                        continue
+
+                    logger.info(f"Selectat runner: {selected_runner_name} (ID: {selection_id}) pentru {team_name}")
 
                     # Place bet
                     place_result = await betfair_client.place_bet(
