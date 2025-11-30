@@ -270,12 +270,31 @@ async def create_team(team_create: TeamCreate):
                                     # Get runner prices
                                     prices = await betfair_client.list_market_book([market_id])
                                     if prices and prices[0].get("runners"):
-                                        # Get first runner's back price (home team)
-                                        runners = prices[0].get("runners", [])
-                                        if runners:
-                                            back_prices = runners[0].get("ex", {}).get("availableToBack", [])
-                                            if back_prices:
-                                                odds = back_prices[0].get("price", "")
+                                        price_runners = prices[0].get("runners", [])
+                                        market_runners = market.get("runners", [])
+
+                                        # Găsim runner-ul echipei noastre (nu primul runner!)
+                                        team_selection_id = None
+                                        for mr in market_runners:
+                                            runner_name = mr.get("runnerName", "")
+                                            if team.name.lower() in runner_name.lower():
+                                                team_selection_id = mr.get("selectionId")
+                                                break
+
+                                        # Luăm cota pentru echipa noastră
+                                        if team_selection_id:
+                                            for pr in price_runners:
+                                                if pr.get("selectionId") == team_selection_id:
+                                                    back_prices = pr.get("ex", {}).get("availableToBack", [])
+                                                    if back_prices:
+                                                        odds = back_prices[0].get("price", "")
+                                                    break
+                                        else:
+                                            # Fallback: dacă nu găsim, luăm primul runner
+                                            if price_runners:
+                                                back_prices = price_runners[0].get("ex", {}).get("availableToBack", [])
+                                                if back_prices:
+                                                    odds = back_prices[0].get("price", "")
                         except Exception as e:
                             logger.warning(f"Could not get odds for {event_name}: {e}")
 
