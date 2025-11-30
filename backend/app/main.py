@@ -76,6 +76,29 @@ async def scheduled_results_check():
     logger.info(f"Rezultat verificare: {result}")
 
 
+async def scheduled_refresh_matches():
+    """
+    Actualizează meciurile pentru toate echipele active.
+    Rulează zilnic la 12:00, cu 1 oră înainte de plasare pariuri.
+    """
+    logger.info("Actualizare programată meciuri echipe")
+
+    await broadcast_notification("Actualizare meciuri de pe Betfair...", "info")
+
+    result = await bot_engine.refresh_all_team_matches()
+
+    if result["success"]:
+        msg = f"Meciuri actualizate: {result.get('teams_updated', 0)} echipe"
+        await broadcast_notification(msg, "success")
+    else:
+        await broadcast_notification(
+            f"Eroare actualizare: {result.get('message', 'Eroare necunoscută')}",
+            "error"
+        )
+
+    logger.info(f"Rezultat actualizare meciuri: {result}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifecycle manager pentru aplicație."""
@@ -108,12 +131,29 @@ async def lifespan(app: FastAPI):
         replace_existing=True
     )
 
+    # Job pentru actualizare meciuri - rulează zilnic la 12:00 (1 oră înainte de plasare)
+    refresh_hour = settings.bot_run_hour - 1 if settings.bot_run_hour > 0 else 23
+    refresh_trigger = CronTrigger(
+        hour=refresh_hour,
+        minute=0,
+        timezone=timezone
+    )
+
+    scheduler.add_job(
+        scheduled_refresh_matches,
+        trigger=refresh_trigger,
+        id="refresh_matches_job",
+        name="Actualizare meciuri echipe",
+        replace_existing=True
+    )
+
     scheduler.start()
     logger.info(
         f"Scheduler pornit - Bot programat la {settings.bot_run_hour:02d}:{settings.bot_run_minute:02d} "
         f"({settings.bot_timezone})"
     )
     logger.info("Verificare rezultate programată la fiecare 30 minute")
+    logger.info(f"Actualizare meciuri programată la {refresh_hour:02d}:00")
 
     yield
 

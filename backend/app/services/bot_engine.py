@@ -763,5 +763,148 @@ class BotEngine:
 
         return results
 
+    async def refresh_all_team_matches(self) -> Dict[str, Any]:
+        """
+        Actualizează meciurile pentru toate echipele active.
+        Preia meciuri noi de pe Betfair și le adaugă în Google Sheets.
+        NU resetează progresia!
+
+        Returns:
+            Dict cu rezultatele actualizării
+        """
+        results = {
+            "success": True,
+            "timestamp": datetime.utcnow().isoformat(),
+            "teams_updated": 0,
+            "matches_added": 0,
+            "errors": []
+        }
+
+        try:
+            from app.services.google_sheets import google_sheets_client
+            from app.services.betfair_client import betfair_client
+            import pytz
+
+            # Connect to services
+            if not google_sheets_client.is_connected():
+                google_sheets_client.connect()
+
+            if not google_sheets_client.is_connected():
+                results["success"] = False
+                results["message"] = "Nu s-a putut conecta la Google Sheets"
+                return results
+
+            if not betfair_client.is_connected():
+                await betfair_client.connect()
+
+            if not betfair_client.is_connected():
+                results["success"] = False
+                results["message"] = "Nu s-a putut conecta la Betfair"
+                return results
+
+            # Get all active teams from Index
+            teams_data = google_sheets_client.load_teams()
+            active_teams = [t for t in teams_data if t.get("status") == "active"]
+
+            logger.info(f"Actualizare meciuri pentru {len(active_teams)} echipe active")
+
+            # Skip keywords pentru echipe rezerve/tineret
+            skip_keywords = ["(Res)", "U19", "U21", "U23", "Women", "Feminin", "II", "B)"]
+
+            for team_data in active_teams:
+                team_name = team_data.get("name", "")
+
+                try:
+                    # Get events from Betfair
+                    events = await betfair_client.list_events(
+                        event_type_id="1",
+                        text_query=team_name
+                    )
+
+                    if not events:
+                        logger.info(f"Nu s-au găsit evenimente pentru {team_name}")
+                        continue
+
+                    matches_to_add = []
+
+                    for event in events[:20]:
+                        event_data = event.get("event", {})
+                        event_id = event_data.get("id", "")
+                        event_name = event_data.get("name", "")
+
+                        # Skip reserve/youth teams
+                        if any(kw in event_name for kw in skip_keywords):
+                            continue
+
+                        # Get market info
+                        if event_id:
+                            try:
+                                markets = await betfair_client.list_market_catalogue(
+                                    event_ids=[event_id],
+                                    market_type_codes=["MATCH_ODDS"]
+                                )
+
+                                if markets:
+                                    market = markets[0]
+                                    market_id = market.get("marketId", "")
+                                    market_start_time_utc = market.get("marketStartTime", "")
+
+                                    # Convert UTC to Europe/Bucharest
+                                    market_start_time = ""
+                                    if market_start_time_utc:
+                                        try:
+                                            utc_time = datetime.fromisoformat(market_start_time_utc.replace("Z", "+00:00"))
+                                            bucharest_tz = pytz.timezone("Europe/Bucharest")
+                                            local_time = utc_time.astimezone(bucharest_tz)
+                                            market_start_time = local_time.strftime("%Y-%m-%dT%H:%M")
+                                        except:
+                                            market_start_time = market_start_time_utc
+
+                                    # Get odds
+                                    odds = ""
+                                    if market_id:
+                                        prices = await betfair_client.list_market_book([market_id])
+                                        if prices and prices[0].get("runners"):
+                                            runners = prices[0].get("runners", [])
+                                            if runners:
+                                                back_prices = runners[0].get("ex", {}).get("availableToBack", [])
+                                                if back_prices:
+                                                    odds = back_prices[0].get("price", "")
+
+                                    matches_to_add.append({
+                                        "start_time": market_start_time,
+                                        "event_name": event_name,
+                                        "competition": event.get("competitionName", ""),
+                                        "odds": str(odds) if odds else ""
+                                    })
+                            except Exception as e:
+                                logger.warning(f"Eroare la preluarea datelor pentru {event_name}: {e}")
+
+                    if matches_to_add:
+                        # Sort by date
+                        matches_sorted = sorted(matches_to_add, key=lambda x: x.get("start_time", ""))
+
+                        # Save to Google Sheets (funcția skipă meciurile existente)
+                        saved = google_sheets_client.save_matches_for_team(team_name, matches_sorted)
+
+                        if saved:
+                            results["teams_updated"] += 1
+                            results["matches_added"] += len(matches_sorted)
+                            logger.info(f"Actualizat {team_name}: {len(matches_sorted)} meciuri verificate")
+
+                except Exception as e:
+                    error_msg = f"Eroare la actualizarea {team_name}: {str(e)}"
+                    logger.error(error_msg)
+                    results["errors"].append(error_msg)
+
+            results["message"] = f"Actualizare completă: {results['teams_updated']} echipe, {results['matches_added']} meciuri verificate"
+
+        except Exception as e:
+            results["success"] = False
+            results["message"] = f"Eroare la actualizare: {str(e)}"
+            logger.error(f"Eroare la actualizarea meciurilor: {e}")
+
+        return results
+
 
 bot_engine = BotEngine()
