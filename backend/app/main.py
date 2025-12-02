@@ -99,6 +99,23 @@ async def scheduled_refresh_matches():
     logger.info(f"Rezultat actualizare meciuri: {result}")
 
 
+async def scheduled_betfair_keepalive():
+    """
+    Menține session-ul Betfair activ pentru a preveni expirarea token-ului.
+    Rulează la fiecare 4 ore.
+    """
+    from app.services.betfair_client import betfair_client
+
+    logger.info("Betfair keep-alive check")
+
+    result = await betfair_client.keep_alive()
+
+    if result:
+        logger.info("Betfair session kept alive successfully")
+    else:
+        logger.error("Failed to keep Betfair session alive")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifecycle manager pentru aplicație."""
@@ -147,6 +164,15 @@ async def lifespan(app: FastAPI):
         replace_existing=True
     )
 
+    # Job pentru menținerea session-ului Betfair activ - rulează la fiecare 4 ore
+    scheduler.add_job(
+        scheduled_betfair_keepalive,
+        trigger=IntervalTrigger(hours=4),
+        id="betfair_keepalive_job",
+        name="Betfair session keep-alive",
+        replace_existing=True
+    )
+
     scheduler.start()
     logger.info(
         f"Scheduler pornit - Bot programat la {settings.bot_run_hour:02d}:{settings.bot_run_minute:02d} "
@@ -154,6 +180,7 @@ async def lifespan(app: FastAPI):
     )
     logger.info("Verificare rezultate programată la fiecare 30 minute")
     logger.info(f"Actualizare meciuri programată la {refresh_hour:02d}:00")
+    logger.info("Betfair keep-alive programat la fiecare 4 ore")
 
     yield
 

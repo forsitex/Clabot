@@ -1,96 +1,92 @@
-# Betfair Bot - Sistem de Pariuri Automate
+# 🎯 Clabot - Betfair Bot Automat
 
-Bot de pariere automată pe Betfair Exchange cu strategie de progresie pentru recuperarea pierderilor.
+**Bot automat de pariuri sportive cu strategie de progresie**
 
-## Funcționalități
+[![Status](https://img.shields.io/badge/status-production-success)]()
+[![Python](https://img.shields.io/badge/python-3.12-blue)]()
+[![Vue.js](https://img.shields.io/badge/vue.js-3-green)]()
 
-- **Monitorizare echipe** - Urmărește meciurile echipelor selectate
-- **Plasare automată** - Plasează pariuri BACK pe victoria echipei
-- **Sistem de progresie** - Calculează miza pentru recuperarea pierderilor
-- **Dashboard web** - Interfață pentru control și monitorizare
-- **Google Sheets** - Sincronizare date cu spreadsheet
+---
 
-## Structură Proiect
-
-```
-/PARIURI
-├── backend/                 # Python FastAPI
-│   ├── app/
-│   │   ├── api/            # REST endpoints
-│   │   ├── services/       # Logica de business
-│   │   └── models/         # Pydantic schemas
-│   └── requirements.txt
-│
-├── frontend/               # Vue.js Dashboard
-│   ├── src/
-│   │   ├── views/         # Pagini
-│   │   ├── stores/        # Pinia stores
-│   │   └── services/      # API client
-│   └── package.json
-│
-└── docker-compose.yml
-```
-
-## Instalare
-
-### Backend
+## 🚀 Quick Start
 
 ```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # sau venv\Scripts\activate pe Windows
-pip install -r requirements.txt
-cp .env.example .env
-# Editează .env cu credențialele tale
-uvicorn app.main:app --reload
+# Deploy
+./deploy.sh "your commit message"
+
+# Acces Dashboard
+http://89.45.83.59
 ```
 
-### Frontend
+---
+
+## 📚 Documentație
+
+**Pentru documentație completă, vezi:**
+- **[DOCUMENTATION.md](./DOCUMENTATION.md)** - Documentație completă (arhitectură, funcționalități, API, troubleshooting)
+- **[VPS-SETUP.md](./VPS-SETUP.md)** - Setup VPS și deployment
+
+---
+
+## ✨ Features
+
+- ✅ **Plasare automată** pariuri la ore programate
+- ✅ **Strategie de progresie** pentru recuperare pierderi
+- ✅ **Dashboard web** pentru monitorizare și control
+- ✅ **Google Sheets** integration pentru stocare date
+- ✅ **Miză inițială per echipă** configurabilă
+- ✅ **Verificare automată** rezultate
+- ✅ **Filtrare** echipe rezerve/tineret/feminine
+- ✅ **WebSocket** pentru actualizări live
+
+---
+
+## 🏗️ Stack Tehnologic
+
+**Backend:** Python 3.12, FastAPI, APScheduler, Betfair API, Google Sheets API  
+**Frontend:** Vue.js 3, TypeScript, Vite, TailwindCSS, Pinia  
+**Deployment:** VPS Ubuntu 24.04, Nginx, systemd
+
+---
+
+## 📊 Strategie
+
+**Formula:** `(pierdere_cumulată / (cotă - 1)) + miză_inițială`
+
+**Exemplu:**
+- Miză inițială: 5 RON
+- Step 0: 5 RON → LOST
+- Step 1: 15 RON → LOST
+- Step 2: 45 RON → WIN → Profit: 2.5 RON ✅
+
+**Caracteristici:**
+- Reset automat la WIN
+- Stop loss la 7 pași
+- Miză inițială configurabilă per echipă
+
+---
+
+## 🔧 Management
 
 ```bash
-cd frontend
-npm install
-npm run dev
+# Status service
+sudo systemctl status betfair-bot
+
+# Restart
+sudo systemctl restart betfair-bot
+
+# Logs
+journalctl -u betfair-bot -f
 ```
 
-## Configurare
+---
 
-### Betfair API
+## 📞 Info
 
-1. Creează cont developer pe [Betfair Developer](https://developer.betfair.com/)
-2. Generează App Key
-3. Creează certificat SSL pentru autentificare
-4. Adaugă credențialele în `.env`
+**VPS:** `89.45.83.59`  
+**Dashboard:** `http://89.45.83.59`  
+**API:** `http://89.45.83.59/api`
 
-### Google Sheets
+---
 
-1. Creează proiect în [Google Cloud Console](https://console.cloud.google.com/)
-2. Activează Google Sheets API
-3. Creează Service Account și descarcă JSON
-4. Partajează spreadsheet-ul cu email-ul Service Account
-
-## Formula de Progresie
-
-```
-La WIN:  Pierdere_Cumulată = 0, Miză = 100 RON
-La LOSE: Miză = (Pierdere_Cumulată / (Cotă - 1)) + 100 RON
-```
-
-## API Endpoints
-
-| Endpoint           | Metodă         | Descriere                |
-| ------------------ | -------------- | ------------------------ |
-| `/api/health`      | GET            | Health check             |
-| `/api/stats`       | GET            | Statistici dashboard     |
-| `/api/bot/state`   | GET            | Stare bot                |
-| `/api/bot/start`   | POST           | Pornește bot             |
-| `/api/bot/stop`    | POST           | Oprește bot              |
-| `/api/bot/run-now` | POST           | Execută ciclu imediat    |
-| `/api/teams`       | GET/POST       | Lista/Creare echipe      |
-| `/api/teams/{id}`  | GET/PUT/DELETE | CRUD echipă              |
-| `/api/bets`        | GET            | Lista pariuri            |
-| `/ws`              | WebSocket      | Actualizări în timp real |
-
-## Licență
-
-Proiect privat - Toate drepturile rezervate
+**🏆 Gata de Producție!**

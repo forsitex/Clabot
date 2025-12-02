@@ -205,8 +205,31 @@ class BetfairClient:
             if response.status_code == 200:
                 return response.json()
             else:
-                logger.error(f"Eroare API: {response.status_code} - {response.text}")
-                return {"error": response.text}
+                error_text = response.text
+                logger.error(f"Eroare API: {response.status_code} - {error_text}")
+
+                # Check if session expired - try to reconnect once
+                if "INVALID_SESSION_INFORMATION" in error_text or response.status_code == 400:
+                    logger.warning("Session token invalid - attempting reconnect...")
+                    self._connected = False
+                    reconnected = await self.connect()
+
+                    if reconnected:
+                        logger.info("Reconnected successfully - retrying request...")
+                        # Retry the request once with new session
+                        async with httpx.AsyncClient(timeout=30.0) as retry_client:
+                            retry_response = await retry_client.post(
+                                url,
+                                headers=self._get_headers(use_live_key=use_live_key),
+                                json=params
+                            )
+                            if retry_response.status_code == 200:
+                                return retry_response.json()
+                            else:
+                                logger.error(f"Retry failed: {retry_response.status_code} - {retry_response.text}")
+                                return {"error": retry_response.text}
+
+                return {"error": error_text}
 
         except Exception as e:
             logger.error(f"Eroare request API: {e}")
@@ -569,6 +592,30 @@ class BetfairClient:
             "lost_count": len(lost),
             "total_profit": round(total_profit, 2)
         }
+
+    async def keep_alive(self) -> bool:
+        """
+        Menține session-ul Betfair activ prin verificarea periodică.
+        Apelează un endpoint simplu pentru a preveni expirarea token-ului.
+
+        Returns:
+            True dacă session-ul este activ sau a fost reconectat cu succes
+        """
+        try:
+            # Simple ping to keep session alive
+            result = await self.get_account_funds()
+
+            # If we got an error, try to reconnect
+            if "error" in result:
+                logger.warning("Keep-alive failed, attempting reconnect...")
+                return await self.connect()
+
+            logger.info("Betfair session keep-alive successful")
+            return True
+
+        except Exception as e:
+            logger.error(f"Keep-alive error: {e}, attempting reconnect...")
+            return await self.connect()
 
 
 betfair_client = BetfairClient()
