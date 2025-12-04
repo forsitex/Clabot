@@ -11,6 +11,7 @@ import {
   Percent,
 } from "lucide-vue-next";
 import { useBotStore } from "@/stores/bot";
+import DashboardCharts from "@/components/DashboardCharts.vue";
 
 const botStore = useBotStore();
 
@@ -206,5 +207,7 @@ function formatCurrency(value: number): string {
         </div>
       </div>
     </div>
+
+    <DashboardCharts />
   </div>
 </template>

@@ -59,6 +59,110 @@ async def get_dashboard_stats():
     return bot_engine.get_dashboard_stats()
 
 
+@router.get("/stats/history")
+async def get_stats_history(days: int = 30):
+    """
+    Returnează istoricul statisticilor pentru grafice.
+    Doar citește date - nu modifică nimic.
+    """
+    from app.services.google_sheets import google_sheets_client
+    from collections import defaultdict
+
+    cache_key = f"stats_history_{days}"
+    cached = google_sheets_client._get_cached(cache_key)
+    if cached is not None:
+        return cached
+
+    daily_data = defaultdict(lambda: {"profit": 0.0, "won": 0, "lost": 0, "pending": 0, "staked": 0.0})
+    team_profits = []
+
+    try:
+        if not google_sheets_client.is_connected():
+            google_sheets_client.connect()
+
+        if not google_sheets_client.is_connected():
+            return {"daily": [], "team_profits": []}
+
+        teams_data = google_sheets_client.load_teams()
+
+        for team_data in teams_data:
+            team_name = team_data.get("name", "")
+            if not team_name:
+                continue
+
+            team_profit = 0.0
+            team_won = 0
+            team_lost = 0
+
+            try:
+                sheet = google_sheets_client._spreadsheet.worksheet(team_name)
+                all_records = sheet.get_all_records()
+
+                for match in all_records:
+                    status = str(match.get("Status", "")).strip().upper()
+                    date_str = str(match.get("Data", ""))[:10]  # YYYY-MM-DD
+
+                    if not date_str or status not in ["WON", "LOST", "PENDING"]:
+                        continue
+
+                    stake = 0.0
+                    profit = 0.0
+                    try:
+                        stake = float(match.get("Miză", 0) or 0)
+                    except:
+                        pass
+                    try:
+                        profit = float(match.get("Profit", 0) or 0)
+                    except:
+                        pass
+
+                    if status == "WON":
+                        daily_data[date_str]["won"] += 1
+                        daily_data[date_str]["profit"] += profit
+                        daily_data[date_str]["staked"] += stake
+                        team_profit += profit
+                        team_won += 1
+                    elif status == "LOST":
+                        daily_data[date_str]["lost"] += 1
+                        daily_data[date_str]["profit"] += profit
+                        daily_data[date_str]["staked"] += stake
+                        team_profit += profit
+                        team_lost += 1
+                    elif status == "PENDING":
+                        daily_data[date_str]["pending"] += 1
+                        daily_data[date_str]["staked"] += stake
+
+            except Exception:
+                pass
+
+            if team_won > 0 or team_lost > 0:
+                team_profits.append({
+                    "name": team_name,
+                    "profit": round(team_profit, 2),
+                    "won": team_won,
+                    "lost": team_lost
+                })
+
+        # Sort daily by date, team_profits by profit descending
+        daily_sorted = sorted(
+            [{"date": k, **v} for k, v in daily_data.items()],
+            key=lambda x: x["date"]
+        )[-days:]
+
+        team_profits_sorted = sorted(team_profits, key=lambda x: x["profit"], reverse=True)
+
+        result = {
+            "daily": daily_sorted,
+            "team_profits": team_profits_sorted
+        }
+
+        google_sheets_client._set_cached(cache_key, result)
+        return result
+
+    except Exception as e:
+        return {"daily": [], "team_profits": [], "error": str(e)}
+
+
 @router.get("/bot/state", response_model=BotState)
 async def get_bot_state():
     """Returnează starea curentă a botului."""
