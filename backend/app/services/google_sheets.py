@@ -1,6 +1,7 @@
 import logging
 from typing import List, Optional, Dict, Any
 from datetime import datetime
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +18,9 @@ class GoogleSheetsClient:
         self._spreadsheet_id: Optional[str] = None
         self._credentials_path: Optional[str] = None
         self._connected = False
+        self._cache: Dict[str, Any] = {}
+        self._cache_timestamps: Dict[str, float] = {}
+        self._cache_ttl = 60  # Cache TTL in seconds
 
     def configure(self, spreadsheet_id: str, credentials_path: Optional[str] = None) -> bool:
         """
@@ -117,13 +121,39 @@ class GoogleSheetsClient:
             logger.info(f"Worksheet creat: {name}")
         return worksheet
 
+    def _get_cached(self, key: str) -> Optional[Any]:
+        """Returnează valoarea din cache dacă nu a expirat."""
+        if key in self._cache:
+            timestamp = self._cache_timestamps.get(key, 0)
+            if time.time() - timestamp < self._cache_ttl:
+                return self._cache[key]
+        return None
+
+    def _set_cached(self, key: str, value: Any) -> None:
+        """Salvează valoarea în cache."""
+        self._cache[key] = value
+        self._cache_timestamps[key] = time.time()
+
+    def invalidate_cache(self, key: str = None) -> None:
+        """Invalidează cache-ul (tot sau pentru o cheie specifică)."""
+        if key:
+            self._cache.pop(key, None)
+            self._cache_timestamps.pop(key, None)
+        else:
+            self._cache.clear()
+            self._cache_timestamps.clear()
+
     def load_teams(self) -> List[Dict[str, Any]]:
         """
-        Încarcă echipele din Google Sheets.
+        Încarcă echipele din Google Sheets (cu cache 60s).
 
         Returns:
             Lista de echipe ca dicționare
         """
+        cached = self._get_cached("teams")
+        if cached is not None:
+            return cached
+
         if not self._connected:
             logger.warning("Nu sunt conectat la Google Sheets")
             return []
@@ -152,10 +182,11 @@ class GoogleSheetsClient:
                         "status": record.get("status", "active"),
                         "created_at": record.get("created_at", datetime.utcnow().isoformat()),
                         "updated_at": record.get("updated_at", datetime.utcnow().isoformat()),
-                        "initial_stake": float(record.get("initial_stake", 5))  # Miză inițială per echipă
+                        "initial_stake": float(record.get("initial_stake", 5))
                     })
 
             logger.info(f"Încărcate {len(teams)} echipe din Google Sheets")
+            self._set_cached("teams", teams)
             return teams
 
         except Exception as e:

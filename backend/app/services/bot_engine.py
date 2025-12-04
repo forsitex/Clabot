@@ -367,8 +367,13 @@ class BotEngine:
         )
 
     def get_dashboard_stats(self) -> DashboardStats:
-        """Calculează statisticile pentru dashboard din Google Sheets."""
+        """Calculează statisticile pentru dashboard din Google Sheets (cu cache 60s)."""
         from app.services.google_sheets import google_sheets_client
+
+        cache_key = "dashboard_stats"
+        cached = google_sheets_client._get_cached(cache_key)
+        if cached is not None:
+            return cached
 
         total_teams = 0
         active_teams = 0
@@ -440,7 +445,7 @@ class BotEngine:
         settled_bets = won_bets + lost_bets
         win_rate = (won_bets / settled_bets * 100) if settled_bets > 0 else 0.0
 
-        return DashboardStats(
+        result = DashboardStats(
             total_teams=total_teams,
             active_teams=active_teams,
             total_bets=total_bets,
@@ -451,6 +456,9 @@ class BotEngine:
             win_rate=round(win_rate, 2),
             total_staked=round(total_staked, 2)
         )
+
+        google_sheets_client._set_cached(cache_key, result)
+        return result
 
     async def run_cycle(self) -> Dict[str, Any]:
         """
