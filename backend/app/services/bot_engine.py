@@ -367,27 +367,86 @@ class BotEngine:
         )
 
     def get_dashboard_stats(self) -> DashboardStats:
-        """Calculează statisticile pentru dashboard."""
-        teams = list(self._teams.values())
-        bets = list(self._bets.values())
+        """Calculează statisticile pentru dashboard din Google Sheets."""
+        from app.services.google_sheets import google_sheets_client
 
-        won_bets = [b for b in bets if b.status == BetStatus.WON]
-        lost_bets = [b for b in bets if b.status == BetStatus.LOST]
-        pending_bets = [b for b in bets if b.status in [BetStatus.PENDING, BetStatus.PLACED, BetStatus.MATCHED]]
+        total_teams = 0
+        active_teams = 0
+        won_bets = 0
+        lost_bets = 0
+        pending_bets = 0
+        total_profit = 0.0
+        total_staked = 0.0
 
-        total_profit = sum(b.result or 0 for b in bets if b.result is not None)
-        total_staked = sum(b.stake for b in bets if b.status != BetStatus.PENDING)
+        try:
+            if not google_sheets_client.is_connected():
+                google_sheets_client.connect()
 
-        settled_bets = len(won_bets) + len(lost_bets)
-        win_rate = (len(won_bets) / settled_bets * 100) if settled_bets > 0 else 0.0
+            if not google_sheets_client.is_connected():
+                logger.warning("Google Sheets nu este conectat pentru stats")
+                return DashboardStats(
+                    total_teams=0, active_teams=0, total_bets=0,
+                    won_bets=0, lost_bets=0, pending_bets=0,
+                    total_profit=0.0, win_rate=0.0, total_staked=0.0
+                )
+
+            teams_data = google_sheets_client.load_teams()
+            total_teams = len(teams_data)
+            active_teams = len([t for t in teams_data if t.get("status") == "active"])
+
+            for team_data in teams_data:
+                team_name = team_data.get("name", "")
+                if not team_name:
+                    continue
+
+                try:
+                    sheet = google_sheets_client._spreadsheet.worksheet(team_name)
+                    all_records = sheet.get_all_records()
+
+                    for match in all_records:
+                        status = str(match.get("Status", "")).strip().upper()
+                        stake = 0.0
+                        profit = 0.0
+
+                        try:
+                            stake = float(match.get("Miză", 0) or 0)
+                        except:
+                            pass
+
+                        try:
+                            profit = float(match.get("Profit", 0) or 0)
+                        except:
+                            pass
+
+                        if status == "WON":
+                            won_bets += 1
+                            total_profit += profit
+                            total_staked += stake
+                        elif status == "LOST":
+                            lost_bets += 1
+                            total_profit += profit
+                            total_staked += stake
+                        elif status == "PENDING":
+                            pending_bets += 1
+                            total_staked += stake
+
+                except Exception as e:
+                    logger.warning(f"Eroare citire stats pentru {team_name}: {e}")
+
+        except Exception as e:
+            logger.error(f"Eroare la calcularea statisticilor din Sheets: {e}")
+
+        total_bets = won_bets + lost_bets + pending_bets
+        settled_bets = won_bets + lost_bets
+        win_rate = (won_bets / settled_bets * 100) if settled_bets > 0 else 0.0
 
         return DashboardStats(
-            total_teams=len(teams),
-            active_teams=len([t for t in teams if t.status == TeamStatus.ACTIVE]),
-            total_bets=len(bets),
-            won_bets=len(won_bets),
-            lost_bets=len(lost_bets),
-            pending_bets=len(pending_bets),
+            total_teams=total_teams,
+            active_teams=active_teams,
+            total_bets=total_bets,
+            won_bets=won_bets,
+            lost_bets=lost_bets,
+            pending_bets=pending_bets,
             total_profit=round(total_profit, 2),
             win_rate=round(win_rate, 2),
             total_staked=round(total_staked, 2)
