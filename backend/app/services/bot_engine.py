@@ -658,9 +658,9 @@ class BotEngine:
                     selected_runner_name = None
                     for runner in runners:
                         runner_name = runner.get("runnerName", "")
-                        # Verificăm dacă numele echipei se potrivește cu runner-ul
+                        # Verificăm dacă numele echipei se potrivește EXACT cu runner-ul
                         for search_term in search_terms:
-                            if search_term.lower() in runner_name.lower():
+                            if search_term.lower() == runner_name.lower():
                                 selection_id = str(runner.get("selectionId", ""))
                                 selected_runner_name = runner_name
                                 break
@@ -967,11 +967,11 @@ class BotEngine:
                                             price_runners = prices[0].get("runners", [])
                                             market_runners = market.get("runners", [])
 
-                                            # Găsim runner-ul echipei noastre
+                                            # Găsim runner-ul echipei noastre (verificare EXACTĂ)
                                             team_selection_id = None
                                             for mr in market_runners:
                                                 runner_name = mr.get("runnerName", "")
-                                                if team_name.lower() in runner_name.lower():
+                                                if team_name.lower() == runner_name.lower():
                                                     team_selection_id = mr.get("selectionId")
                                                     break
 

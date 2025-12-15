@@ -382,11 +382,11 @@ async def create_team(team_create: TeamCreate):
                                         price_runners = prices[0].get("runners", [])
                                         market_runners = market.get("runners", [])
 
-                                        # Găsim runner-ul echipei noastre (nu primul runner!)
+                                        # Găsim runner-ul echipei noastre (verificare EXACTĂ)
                                         team_selection_id = None
                                         for mr in market_runners:
                                             runner_name = mr.get("runnerName", "")
-                                            if team.name.lower() in runner_name.lower():
+                                            if team.name.lower() == runner_name.lower():
                                                 team_selection_id = mr.get("selectionId")
                                                 break
 
