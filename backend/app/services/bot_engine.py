@@ -61,7 +61,7 @@ class BotEngine:
         return True
 
     def get_all_teams(self) -> List[Team]:
-        """Returnează toate echipele din Google Sheets (Index + statistici din sheet-uri)."""
+        """Returnează toate echipele din Google Sheets (Index - fără statistici pentru a evita rate limit)."""
         from app.services.google_sheets import google_sheets_client
 
         if not google_sheets_client.is_connected():
@@ -80,34 +80,6 @@ class BotEngine:
                 if not team_name:
                     continue
 
-                total_matches = 0
-                matches_won = 0
-                matches_lost = 0
-                total_profit = 0.0
-
-                try:
-                    sheet = google_sheets_client._spreadsheet.worksheet(team_name)
-                    all_records = sheet.get_all_records()
-
-                    for match in all_records:
-                        status = str(match.get("Status", "")).strip().upper()
-
-                        if status in ["WON", "LOST"]:
-                            total_matches += 1
-                            if status == "WON":
-                                matches_won += 1
-                            elif status == "LOST":
-                                matches_lost += 1
-
-                            try:
-                                profit = float(match.get("Profit", 0))
-                                total_profit += profit
-                            except:
-                                pass
-
-                except Exception as e:
-                    logger.warning(f"Eroare calculare statistici pentru {team_name}: {e}")
-
                 team = Team(
                     id=team_data.get("id", str(uuid4())),
                     name=team_name,
@@ -117,12 +89,12 @@ class BotEngine:
                     country=team_data.get("country", ""),
                     cumulative_loss=float(team_data.get("cumulative_loss", 0)),
                     progression_step=int(team_data.get("progression_step", 0)),
-                    last_stake=float(team_data.get("last_stake", 100)),
+                    last_stake=float(team_data.get("last_stake", 0)),
                     status=TeamStatus.ACTIVE if team_data.get("status") == "active" else TeamStatus.PAUSED,
-                    total_matches=total_matches,
-                    matches_won=matches_won,
-                    matches_lost=matches_lost,
-                    total_profit=total_profit
+                    total_matches=0,
+                    matches_won=0,
+                    matches_lost=0,
+                    total_profit=0.0
                 )
                 teams.append(team)
 

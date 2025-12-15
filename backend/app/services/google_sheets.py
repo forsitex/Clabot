@@ -115,10 +115,13 @@ class GoogleSheetsClient:
         """Obține sau creează un worksheet."""
         try:
             worksheet = self._spreadsheet.worksheet(name)
-        except Exception:
+        except gspread.exceptions.WorksheetNotFound:
             worksheet = self._spreadsheet.add_worksheet(title=name, rows=1000, cols=len(headers))
             worksheet.append_row(headers)
             logger.info(f"Worksheet creat: {name}")
+        except Exception as e:
+            logger.error(f"Eroare la accesarea worksheet-ului {name}: {e}")
+            raise
         return worksheet
 
     def _get_cached(self, key: str) -> Optional[Any]:
