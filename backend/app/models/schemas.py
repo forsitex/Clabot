@@ -41,6 +41,7 @@ class Team(BaseModel):
     last_stake: float = Field(default=0.0, ge=0, description="Last stake placed")
     progression_step: int = Field(default=0, ge=0, description="Current progression step")
     status: TeamStatus = Field(default=TeamStatus.ACTIVE, description="Team status")
+    initial_stake: float = Field(default=5.0, ge=0, description="Miză inițială per echipă (RON)")
     # Statistics
     total_matches: int = Field(default=0, ge=0, description="Total matches played")
     matches_won: int = Field(default=0, ge=0, description="Matches won")

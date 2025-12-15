@@ -91,6 +91,7 @@ class BotEngine:
                     progression_step=int(team_data.get("progression_step", 0)),
                     last_stake=float(team_data.get("last_stake", 0)),
                     status=TeamStatus.ACTIVE if team_data.get("status") == "active" else TeamStatus.PAUSED,
+                    initial_stake=float(team_data.get("initial_stake", 5)),
                     total_matches=0,
                     matches_won=0,
                     matches_lost=0,
