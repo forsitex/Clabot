@@ -56,6 +56,7 @@ class TeamCreate(BaseModel):
     sport: Sport
     league: str = Field(..., min_length=1, max_length=100)
     country: str = Field(..., min_length=2, max_length=50)
+    initial_stake: Optional[float] = Field(None, gt=0, description="Miză inițială per echipă (RON)")
 
 
 class TeamUpdate(BaseModel):

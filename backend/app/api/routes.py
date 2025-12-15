@@ -283,8 +283,12 @@ async def create_team(team_create: TeamCreate):
     """Creează o echipă nouă și preia următoarele 20 de meciuri."""
     from app.services.google_sheets import google_sheets_client
     from app.services.betfair_client import betfair_client
+    from app.config import get_settings
     import logging
     logger = logging.getLogger(__name__)
+
+    settings = get_settings()
+    initial_stake = team_create.initial_stake if team_create.initial_stake is not None else settings.bot_initial_stake
 
     team = Team(
         id=str(uuid4()),
@@ -294,7 +298,7 @@ async def create_team(team_create: TeamCreate):
         league=team_create.league,
         country=team_create.country,
         cumulative_loss=0.0,
-        last_stake=100.0,
+        last_stake=0.0,
         progression_step=0,
         status=TeamStatus.ACTIVE,
         created_at=datetime.utcnow(),
@@ -311,6 +315,7 @@ async def create_team(team_create: TeamCreate):
     if google_sheets_client.is_connected():
         # Save team to Index sheet and create team sheet
         team_data = team.model_dump()
+        team_data["initial_stake"] = initial_stake
         # Convert datetime to string for JSON serialization
         team_data["created_at"] = team_data["created_at"].isoformat() if team_data.get("created_at") else ""
         team_data["updated_at"] = team_data["updated_at"].isoformat() if team_data.get("updated_at") else ""

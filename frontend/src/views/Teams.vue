@@ -15,7 +15,11 @@ import {
   X,
 } from "lucide-vue-next";
 import { useTeamsStore } from "@/stores/teams";
-import { searchTeamsBetfair, updateTeamInitialStake } from "@/services/api";
+import {
+  searchTeamsBetfair,
+  updateTeamInitialStake,
+  getSettings,
+} from "@/services/api";
 import type { Team, TeamCreate } from "@/types";
 
 const teamsStore = useTeamsStore();
@@ -23,11 +27,14 @@ const teamsStore = useTeamsStore();
 const showAddForm = ref(false);
 const expandedTeam = ref<string | null>(null);
 
+const defaultInitialStake = ref<number>(5);
+
 const newTeam = ref<TeamCreate>({
   name: "",
   sport: "football",
   league: "Auto",
   country: "",
+  initial_stake: 5,
 });
 
 const searchQuery = ref("");
@@ -41,8 +48,15 @@ const editingStakeTeamId = ref<string | null>(null);
 const editStakeValue = ref<number>(5);
 const isSavingStake = ref(false);
 
-onMounted(() => {
+onMounted(async () => {
   teamsStore.fetchTeams();
+  try {
+    const settings = await getSettings();
+    defaultInitialStake.value = settings.initial_stake || 5;
+    newTeam.value.initial_stake = defaultInitialStake.value;
+  } catch (e) {
+    console.error("Eroare la încărcarea setărilor:", e);
+  }
 });
 
 watch(searchQuery, (newVal) => {
@@ -94,7 +108,13 @@ async function handleAddTeam(): Promise<void> {
 
   await teamsStore.createTeam(newTeam.value);
 
-  newTeam.value = { name: "", sport: "football", league: "Auto", country: "" };
+  newTeam.value = {
+    name: "",
+    sport: "football",
+    league: "Auto",
+    country: "",
+    initial_stake: defaultInitialStake.value,
+  };
   searchQuery.value = "";
   showAddForm.value = false;
 }
@@ -228,6 +248,19 @@ function formatCurrency(value: number): string {
             type="text"
             class="input"
             placeholder="ex: Spania"
+            required
+          />
+        </div>
+
+        <div>
+          <label class="label">Miză Inițială (RON)</label>
+          <input
+            v-model.number="newTeam.initial_stake"
+            type="number"
+            min="1"
+            step="1"
+            class="input"
+            placeholder="ex: 5"
             required
           />
         </div>
