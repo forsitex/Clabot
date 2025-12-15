@@ -92,10 +92,10 @@ class BotEngine:
                     last_stake=float(team_data.get("last_stake", 0)),
                     status=TeamStatus.ACTIVE if team_data.get("status") == "active" else TeamStatus.PAUSED,
                     initial_stake=float(team_data.get("initial_stake", 5)),
-                    total_matches=0,
-                    matches_won=0,
-                    matches_lost=0,
-                    total_profit=0.0
+                    total_matches=int(team_data.get("total_matches", 0)),
+                    matches_won=int(team_data.get("matches_won", 0)),
+                    matches_lost=int(team_data.get("total_matches", 0)) - int(team_data.get("matches_won", 0)),
+                    total_profit=float(team_data.get("total_profit", 0))
                 )
                 teams.append(team)
 
@@ -950,7 +950,7 @@ class BotEngine:
 
                     # Update Google Sheets
                     google_sheets_client.update_bet_result(team_name, bet_id, status, profit)
-                    google_sheets_client.update_team_progression_after_result(team_name, won, stake)
+                    google_sheets_client.update_team_progression_after_result(team_name, won, stake, profit)
 
                 else:
                     # Still pending - log mai detaliat

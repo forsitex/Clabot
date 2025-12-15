@@ -164,7 +164,7 @@ class GoogleSheetsClient:
         try:
             headers = ["id", "name", "betfair_id", "sport", "league", "country",
                       "cumulative_loss", "last_stake", "progression_step", "status",
-                      "created_at", "updated_at", "initial_stake"]
+                      "created_at", "updated_at", "initial_stake", "total_matches", "matches_won", "total_profit"]
             worksheet = self._get_or_create_worksheet("Index", headers)
 
             records = worksheet.get_all_records()
@@ -185,7 +185,10 @@ class GoogleSheetsClient:
                         "status": record.get("status", "active"),
                         "created_at": record.get("created_at", datetime.utcnow().isoformat()),
                         "updated_at": record.get("updated_at", datetime.utcnow().isoformat()),
-                        "initial_stake": float(record.get("initial_stake", 5))
+                        "initial_stake": float(record.get("initial_stake", 5)),
+                        "total_matches": int(record.get("total_matches", 0)),
+                        "matches_won": int(record.get("matches_won", 0)),
+                        "total_profit": float(record.get("total_profit", 0))
                     })
 
             logger.info(f"Încărcate {len(teams)} echipe din Google Sheets")
@@ -715,9 +718,10 @@ class GoogleSheetsClient:
             logger.error(f"Eroare la actualizarea pariului {bet_id}: {e}")
             return False
 
-    def update_team_progression_after_result(self, team_name: str, won: bool, stake: float) -> bool:
+    def update_team_progression_after_result(self, team_name: str, won: bool, stake: float, profit: float = 0) -> bool:
         """
         Actualizează progresia echipei în Index sheet după rezultatul unui pariu.
+        Actualizează și statisticile: total_matches, matches_won, total_profit
         """
         if not self._connected:
             return False
@@ -736,6 +740,10 @@ class GoogleSheetsClient:
             current_loss = float(row_values[6]) if len(row_values) > 6 and row_values[6] else 0
             current_step = int(row_values[8]) if len(row_values) > 8 and row_values[8] else 0
 
+            current_total_matches = int(row_values[13]) if len(row_values) > 13 and row_values[13] else 0
+            current_matches_won = int(row_values[14]) if len(row_values) > 14 and row_values[14] else 0
+            current_total_profit = float(row_values[15]) if len(row_values) > 15 and row_values[15] else 0
+
             if won:
                 new_cumulative_loss = 0
                 new_step = 0
@@ -745,10 +753,19 @@ class GoogleSheetsClient:
                 new_step = current_step + 1
                 logger.info(f"LOSE pentru {team_name} - Progresie: loss={new_cumulative_loss}, step={new_step}")
 
+            new_total_matches = current_total_matches + 1
+            new_matches_won = current_matches_won + (1 if won else 0)
+            new_total_profit = current_total_profit + profit
+
             worksheet.update_cell(row, 7, new_cumulative_loss)
             worksheet.update_cell(row, 8, stake)
             worksheet.update_cell(row, 9, new_step)
             worksheet.update_cell(row, 12, datetime.utcnow().isoformat())
+            worksheet.update_cell(row, 14, new_total_matches)
+            worksheet.update_cell(row, 15, new_matches_won)
+            worksheet.update_cell(row, 16, new_total_profit)
+
+            self.invalidate_cache("teams")
 
             return True
 
