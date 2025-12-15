@@ -697,6 +697,145 @@ class BotEngine:
 
         return results
 
+    async def place_bet_for_team(self, team_name: str, initial_stake: float) -> bool:
+        """
+        Plasează pariu pentru o singură echipă (folosit la adăugarea echipei).
+
+        Args:
+            team_name: Numele echipei
+            initial_stake: Miza inițială setată la adăugare
+
+        Returns:
+            True dacă pariul a fost plasat cu succes
+        """
+        from app.services.google_sheets import google_sheets_client
+        from app.services.betfair_client import betfair_client
+        from app.services.staking import staking_service
+
+        try:
+            # Connect to services
+            if not google_sheets_client.is_connected():
+                google_sheets_client.connect()
+            if not betfair_client.is_connected():
+                await betfair_client.connect()
+
+            if not google_sheets_client.is_connected() or not betfair_client.is_connected():
+                logger.warning(f"Nu s-a putut conecta la servicii pentru {team_name}")
+                return False
+
+            # Get scheduled matches
+            scheduled_matches = google_sheets_client.get_scheduled_matches(team_name)
+            if not scheduled_matches:
+                logger.info(f"Nu există meciuri programate pentru {team_name}")
+                return False
+
+            # Get first match
+            sorted_matches = sorted(scheduled_matches, key=lambda x: x.get("Data", ""))
+            match = sorted_matches[0] if sorted_matches else None
+            if not match:
+                return False
+
+            event_name = match.get("Meci", "")
+            match_date_str = match.get("Data", "")
+            odds_str = match.get("Cotă", "")
+
+            if not odds_str:
+                logger.warning(f"Lipsește cota pentru {event_name}")
+                return False
+
+            try:
+                odds = float(odds_str)
+            except:
+                logger.warning(f"Cotă invalidă pentru {event_name}: {odds_str}")
+                return False
+
+            # Calculate stake (pentru echipă nouă: cumulative_loss=0, progression_step=0)
+            stake, stop_loss = staking_service.calculate_stake(0, odds, 0, initial_stake)
+
+            if stop_loss:
+                logger.warning(f"Stop loss pentru {team_name}")
+                return False
+
+            logger.info(f"Plasare pariu imediat: {team_name} - {event_name} - Miză: {stake} @ {odds}")
+
+            # Find event on Betfair
+            search_terms = [team_name]
+            for suffix in [" FC", " United FC", " United"]:
+                if team_name.endswith(suffix):
+                    search_terms.append(team_name[:-len(suffix)])
+
+            events = None
+            for search_term in search_terms:
+                events = await betfair_client.list_events(event_type_id="1", text_query=search_term)
+                if events:
+                    break
+
+            if not events:
+                logger.warning(f"Nu s-a găsit evenimentul pe Betfair: {event_name}")
+                return False
+
+            # Find matching event by date
+            match_date_only = match_date_str[:10] if match_date_str else ""
+            event_id = None
+            for ev in events:
+                ev_data = ev.get("event", {})
+                ev_name = ev_data.get("name", "")
+                ev_open_date = ev_data.get("openDate", "")
+                ev_date_only = ev_open_date[:10] if ev_open_date else ""
+
+                name_matches = any(st.lower() in ev_name.lower() for st in search_terms)
+                if name_matches and ev_date_only == match_date_only:
+                    event_id = ev_data.get("id")
+                    break
+
+            if not event_id:
+                logger.warning(f"Nu s-a găsit event_id pentru {team_name} cu data {match_date_only}")
+                return False
+
+            # Get market
+            markets = await betfair_client.list_market_catalogue(event_ids=[event_id], market_type_codes=["MATCH_ODDS"])
+            if not markets:
+                logger.warning(f"Nu s-a găsit piața pentru {event_name}")
+                return False
+
+            market = markets[0]
+            market_id = market.get("marketId", "")
+            runners = market.get("runners", [])
+
+            # Find runner
+            selection_id = None
+            for runner in runners:
+                runner_name = runner.get("runnerName", "")
+                if any(st.lower() == runner_name.lower() for st in search_terms):
+                    selection_id = str(runner.get("selectionId", ""))
+                    break
+
+            if not selection_id:
+                logger.warning(f"Nu s-a găsit runner pentru {team_name}")
+                return False
+
+            # Place bet
+            place_result = await betfair_client.place_bet(
+                market_id=market_id,
+                selection_id=selection_id,
+                stake=stake,
+                odds=odds
+            )
+
+            if place_result.success:
+                google_sheets_client.update_match_status(team_name, event_name, "PENDING", stake=stake, bet_id=place_result.bet_id)
+                google_sheets_client.update_last_stake(team_name, stake)
+                logger.info(f"Pariu plasat cu succes: {team_name} - {event_name} - Miză: {stake} RON @ {odds}")
+                return True
+            else:
+                logger.error(f"Eroare plasare pariu {team_name}: {place_result.error_message}")
+                google_sheets_client.update_match_status(team_name, event_name, "ERROR")
+                return False
+
+        except Exception as e:
+            logger.error(f"Eroare la plasarea pariului pentru {team_name}: {e}")
+            return False
+
     async def check_bet_results(self) -> Dict[str, Any]:
         """
         Verifică rezultatele pariurilor PENDING.

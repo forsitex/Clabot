@@ -278,7 +278,7 @@ function formatCurrency(value: number): string {
             class="btn btn-primary"
             :disabled="teamsStore.isLoading"
           >
-            Salvează
+            Salvează și Pariază
           </button>
         </div>
       </form>

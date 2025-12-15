@@ -419,6 +419,32 @@ async def create_team(team_create: TeamCreate):
                     matches_sorted = sorted(matches, key=lambda x: x.get("start_time", ""))
                     google_sheets_client.save_matches_for_team(team.name, matches_sorted)
                     logger.info(f"Saved {len(matches_sorted)} matches for {team.name} (sorted by date)")
+
+                    # Plasează pariu imediat pe primul meci dacă e azi și nu a început încă
+                    if matches_sorted:
+                        first_match = matches_sorted[0]
+                        first_match_time = first_match.get("start_time", "")
+                        if first_match_time:
+                            try:
+                                import pytz
+                                from datetime import datetime as dt
+                                bucharest_tz = pytz.timezone("Europe/Bucharest")
+                                now = dt.now(bucharest_tz)
+                                match_dt = dt.fromisoformat(first_match_time)
+                                if match_dt.tzinfo is None:
+                                    match_dt = bucharest_tz.localize(match_dt)
+
+                                # Dacă meciul e azi și nu a început încă, plasează pariul
+                                if match_dt.date() == now.date() and match_dt > now:
+                                    logger.info(f"Primul meci {team.name} e azi - plasare pariu imediat")
+                                    # Rulează ciclul de pariere pentru această echipă
+                                    bet_result = await bot_engine.place_bet_for_team(team.name, initial_stake)
+                                    if bet_result:
+                                        logger.info(f"Pariu plasat cu succes pentru {team.name}")
+                                    else:
+                                        logger.warning(f"Nu s-a putut plasa pariul pentru {team.name}")
+                            except Exception as e:
+                                logger.warning(f"Eroare la verificarea/plasarea pariului imediat: {e}")
                 else:
                     logger.warning(f"No matches found for {team.name}")
 
