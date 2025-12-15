@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="ro">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Clabot - Ghid Instalare VPS</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        color: #e4e4e4;
+        line-height: 1.6;
+        min-height: 100vh;
+      }
+      .container {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 40px 20px;
+      }
+      header {
+        text-align: center;
+        margin-bottom: 50px;
+      }
+      h1 {
+        font-size: 2.5rem;
+        color: #00d4ff;
+        margin-bottom: 10px;
+      }
+      .subtitle {
+        color: #888;
+        font-size: 1.1rem;
+      }
+      .section {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 16px;
+        padding: 30px;
+        margin-bottom: 30px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .section h2 {
+        color: #00d4ff;
+        font-size: 1.5rem;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .section h2 .step-number {
+        background: #00d4ff;
+        color: #1a1a2e;
+        width: 35px;
+        height: 35px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+      }
+      .section h3 {
+        color: #ffd700;
+        margin: 20px 0 10px 0;
+        font-size: 1.1rem;
+      }
+      p {
+        margin-bottom: 15px;
+        color: #ccc;
+      }
+      ul,
+      ol {
+        margin-left: 25px;
+        margin-bottom: 15px;
+      }
+      li {
+        margin-bottom: 8px;
+        color: #bbb;
+      }
+      code {
+        background: rgba(0, 212, 255, 0.1);
+        color: #00d4ff;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-family: "Consolas", monospace;
+      }
+      pre {
+        background: #0d1117;
+        border: 1px solid #30363d;
+        border-radius: 8px;
+        padding: 15px;
+        overflow-x: auto;
+        margin: 15px 0;
+      }
+      pre code {
+        background: none;
+        padding: 0;
+        color: #c9d1d9;
+      }
+      .command {
+        color: #7ee787;
+      }
+      .comment {
+        color: #8b949e;
+      }
+      .warning {
+        background: rgba(255, 193, 7, 0.1);
+        border-left: 4px solid #ffc107;
+        padding: 15px;
+        margin: 15px 0;
+        border-radius: 0 8px 8px 0;
+      }
+      .warning strong {
+        color: #ffc107;
+      }
+      .info {
+        background: rgba(0, 212, 255, 0.1);
+        border-left: 4px solid #00d4ff;
+        padding: 15px;
+        margin: 15px 0;
+        border-radius: 0 8px 8px 0;
+      }
+      .info strong {
+        color: #00d4ff;
+      }
+      .success {
+        background: rgba(40, 167, 69, 0.1);
+        border-left: 4px solid #28a745;
+        padding: 15px;
+        margin: 15px 0;
+        border-radius: 0 8px 8px 0;
+      }
+      .success strong {
+        color: #28a745;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 15px 0;
+      }
+      th,
+      td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      th {
+        background: rgba(0, 212, 255, 0.1);
+        color: #00d4ff;
+      }
+      .file-structure {
+        font-family: "Consolas", monospace;
+        font-size: 0.9rem;
+      }
+      .file-structure .folder {
+        color: #ffd700;
+      }
+      .file-structure .file {
+        color: #7ee787;
+      }
+      .checklist {
+        list-style: none;
+        margin-left: 0;
+      }
+      .checklist li {
+        padding: 10px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      }
+      .checklist li:before {
+        content: "☐ ";
+        color: #00d4ff;
+        font-size: 1.2rem;
+      }
+      footer {
+        text-align: center;
+        margin-top: 50px;
+        padding: 20px;
+        color: #666;
+      }
+      a {
+        color: #00d4ff;
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>🤖 Clabot</h1>
+        <p class="subtitle">Ghid Complet de Instalare pe VPS Nou</p>
+      </header>
+
+      <!-- CERINTE -->
+      <div class="section">
+        <h2><span class="step-number">0</span> Cerințe Preliminare</h2>
+
+        <h3>Ce ai nevoie înainte să începi:</h3>
+        <ul class="checklist">
+          <li>VPS cu Ubuntu 22.04 sau 24.04 (minim 1GB RAM, 20GB disk)</li>
+          <li>Acces SSH la VPS (IP, user root, parolă)</li>
+          <li>Cont Betfair cu acces API activat</li>
+          <li>Cont Google (pentru Google Sheets API)</li>
+          <li>Domeniu (opțional, poți folosi IP-ul direct)</li>
+        </ul>
+
+        <div class="warning">
+          <strong>⚠️ Important:</strong> Betfair API necesită un cont verificat
+          și aplicație pentru APP_KEY. Procesul poate dura 1-2 zile pentru
+          aprobare.
+        </div>
+      </div>
+
+      <!-- PASUL 1: VPS -->
+      <div class="section">
+        <h2><span class="step-number">1</span> Configurare VPS</h2>
+
+        <h3>1.1 Conectare SSH</h3>
+        <pre><code><span class="command">ssh root@IP_VPS</span></code></pre>
+
+        <h3>1.2 Actualizare sistem</h3>
+        <pre><code><span class="command">apt update && apt upgrade -y</span></code></pre>
+
+        <h3>1.3 Instalare dependențe</h3>
+        <pre><code><span class="comment"># Python 3.12</span>
+<span class="command">add-apt-repository ppa:deadsnakes/ppa -y</span>
+<span class="command">apt install python3.12 python3.12-venv python3.12-dev -y</span>
+
+<span class="comment"># Node.js 20</span>
+<span class="command">curl -fsSL https://deb.nodesource.com/setup_20.x | bash -</span>
+<span class="command">apt install nodejs -y</span>
+
+<span class="comment"># Nginx și alte utilitare</span>
+<span class="command">apt install nginx git curl wget -y</span></code></pre>
+
+        <h3>1.4 Clonare proiect</h3>
+        <pre><code><span class="command">cd /opt</span>
+<span class="command">git clone https://github.com/forsitex/Clabot.git betfair-bot</span>
+<span class="command">cd betfair-bot</span></code></pre>
+      </div>
+
+      <!-- PASUL 2: BETFAIR -->
+      <div class="section">
+        <h2><span class="step-number">2</span> Configurare Betfair API</h2>
+
+        <h3>2.1 Obține APP_KEY</h3>
+        <ol>
+          <li>
+            Accesează
+            <a href="https://developer.betfair.com/" target="_blank"
+              >developer.betfair.com</a
+            >
+          </li>
+          <li>Loghează-te cu contul Betfair</li>
+          <li>Mergi la "My Account" → "Manage Application Keys"</li>
+          <li>Creează o aplicație nouă (Delayed sau Live)</li>
+          <li>Copiază APP_KEY-ul generat</li>
+        </ol>
+
+        <h3>2.2 Generează certificat SSL</h3>
+        <pre><code><span class="comment"># Pe calculatorul local, generează certificatul</span>
+<span class="command">openssl genrsa -out betfair.key 2048</span>
+<span class="command">openssl req -new -key betfair.key -out betfair.csr</span>
+
+<span class="comment"># La "Common Name" pune username-ul Betfair</span></code></pre>
+
+        <ol>
+          <li>
+            Mergi la
+            <a href="https://developer.betfair.com/" target="_blank"
+              >developer.betfair.com</a
+            >
+          </li>
+          <li>"My Account" → "Manage Self-Signed Certificates"</li>
+          <li>Upload fișierul <code>betfair.csr</code></li>
+          <li>Descarcă certificatul generat (<code>betfair.crt</code>)</li>
+        </ol>
+
+        <h3>2.3 Copiază certificatele pe VPS</h3>
+        <pre><code><span class="comment"># De pe calculatorul local</span>
+<span class="command">scp betfair.key betfair.crt root@IP_VPS:/opt/betfair-bot/backend/</span></code></pre>
+
+        <div class="info">
+          <strong>ℹ️ Notă:</strong> Pentru Betfair România, folosește
+          endpoint-ul:
+          <code>https://identitysso-cert.betfair.ro/api/certlogin</code>
+        </div>
+      </div>
+
+      <!-- PASUL 3: GOOGLE SHEETS -->
+      <div class="section">
+        <h2>
+          <span class="step-number">3</span> Configurare Google Sheets API
+        </h2>
+
+        <h3>3.1 Creează proiect Google Cloud</h3>
+        <ol>
+          <li>
+            Accesează
+            <a href="https://console.cloud.google.com/" target="_blank"
+              >console.cloud.google.com</a
+            >
+          </li>
+          <li>Creează un proiect nou (ex: "Clabot")</li>
+          <li>Selectează proiectul creat</li>
+        </ol>
+
+        <h3>3.2 Activează Google Sheets API</h3>
+        <ol>
+          <li>Mergi la "APIs & Services" → "Library"</li>
+          <li>Caută "Google Sheets API"</li>
+          <li>Click "Enable"</li>
+        </ol>
+
+        <h3>3.3 Creează Service Account</h3>
+        <ol>
+          <li>Mergi la "APIs & Services" → "Credentials"</li>
+          <li>Click "Create Credentials" → "Service Account"</li>
+          <li>Completează numele (ex: "clabot-service")</li>
+          <li>Click "Create and Continue" → "Done"</li>
+          <li>Click pe service account-ul creat</li>
+          <li>Tab "Keys" → "Add Key" → "Create new key" → JSON</li>
+          <li>Descarcă fișierul JSON</li>
+          <li>Redenumește-l în <code>credentials.json</code></li>
+        </ol>
+
+        <h3>3.4 Creează Google Spreadsheet</h3>
+        <ol>
+          <li>
+            Accesează
+            <a href="https://sheets.google.com/" target="_blank"
+              >sheets.google.com</a
+            >
+          </li>
+          <li>Creează un spreadsheet nou (ex: "Clabot Data")</li>
+          <li>
+            Copiază ID-ul din URL:
+            <code
+              >https://docs.google.com/spreadsheets/d/<strong>ID_AICI</strong>/edit</code
+            >
+          </li>
+          <li>
+            Click "Share" și adaugă email-ul Service Account (din
+            credentials.json, câmpul "client_email")
+          </li>
+          <li>Acordă permisiuni de "Editor"</li>
+        </ol>
+
+        <h3>3.5 Copiază credentials pe VPS</h3>
+        <pre><code><span class="command">scp credentials.json root@IP_VPS:/opt/betfair-bot/backend/</span></code></pre>
+      </div>
+
+      <!-- PASUL 4: CONFIGURARE .ENV -->
+      <div class="section">
+        <h2><span class="step-number">4</span> Configurare Fișier .env</h2>
+
+        <h3>4.1 Creează fișierul .env</h3>
+        <pre><code><span class="command">cd /opt/betfair-bot/backend</span>
+<span class="command">nano .env</span></code></pre>
+
+        <h3>4.2 Conținut .env</h3>
+        <pre><code><span class="comment"># Betfair API</span>
+BETFAIR_APP_KEY=your_app_key_here
+BETFAIR_USERNAME=your_betfair_username
+BETFAIR_PASSWORD=your_betfair_password
+BETFAIR_CERT_FILE=betfair.crt
+BETFAIR_KEY_FILE=betfair.key
+
+<span class="comment"># Google Sheets</span>
+GOOGLE_SHEETS_SPREADSHEET_ID=your_spreadsheet_id_here
+GOOGLE_CREDENTIALS_FILE=credentials.json
+
+<span class="comment"># Bot Configuration</span>
+BOT_RUN_HOUR=13
+BOT_RUN_MINUTE=0
+BOT_INITIAL_STAKE=5.0
+BOT_MAX_PROGRESSION_STEPS=7
+
+<span class="comment"># Dashboard Authentication</span>
+AUTH_USERNAME=admin
+AUTH_PASSWORD=parola_ta_sigura
+JWT_SECRET=genereaza_un_string_random_lung</code></pre>
+
+        <div class="warning">
+          <strong>⚠️ Securitate:</strong> Schimbă <code>AUTH_PASSWORD</code> și
+          <code>JWT_SECRET</code> cu valori unice și sigure!
+        </div>
+      </div>
+
+      <!-- PASUL 5: INSTALARE APLICATIE -->
+      <div class="section">
+        <h2><span class="step-number">5</span> Instalare Aplicație</h2>
+
+        <h3>5.1 Backend (Python)</h3>
+        <pre><code><span class="command">cd /opt/betfair-bot/backend</span>
+<span class="command">python3.12 -m venv venv</span>
+<span class="command">source venv/bin/activate</span>
+<span class="command">pip install --upgrade pip</span>
+<span class="command">pip install -r requirements.txt</span></code></pre>
+
+        <h3>5.2 Frontend (Vue.js)</h3>
+        <pre><code><span class="command">cd /opt/betfair-bot/frontend</span>
+<span class="command">npm install</span>
+<span class="command">npm run build</span></code></pre>
+      </div>
+
+      <!-- PASUL 6: NGINX -->
+      <div class="section">
+        <h2><span class="step-number">6</span> Configurare Nginx</h2>
+
+        <h3>6.1 Creează configurația</h3>
+        <pre><code><span class="command">nano /etc/nginx/sites-available/betfair-bot</span></code></pre>
+
+        <h3>6.2 Conținut configurație</h3>
+        <pre><code>server {
+    listen 80;
+    server_name _;  <span class="comment"># sau domeniul tău</span>
+
+    <span class="comment"># Frontend (Dashboard)</span>
+    location / {
+        root /opt/betfair-bot/frontend/dist;
+        try_files $uri $uri/ /index.html;
+    }
+
+    <span class="comment"># Backend API</span>
+    location /api/ {
+        proxy_pass http://127.0.0.1:8000/api/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    <span class="comment"># WebSocket</span>
+    location /ws {
+        proxy_pass http://127.0.0.1:8000/ws;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+    }
+}</code></pre>
+
+        <h3>6.3 Activează configurația</h3>
+        <pre><code><span class="command">ln -s /etc/nginx/sites-available/betfair-bot /etc/nginx/sites-enabled/</span>
+<span class="command">rm /etc/nginx/sites-enabled/default</span>
+<span class="command">nginx -t</span>
+<span class="command">systemctl restart nginx</span></code></pre>
+      </div>
+
+      <!-- PASUL 7: SYSTEMD -->
+      <div class="section">
+        <h2><span class="step-number">7</span> Configurare Systemd Service</h2>
+
+        <h3>7.1 Creează serviciul</h3>
+        <pre><code><span class="command">nano /etc/systemd/system/betfair-bot.service</span></code></pre>
+
+        <h3>7.2 Conținut serviciu</h3>
+        <pre><code>[Unit]
+Description=Betfair Bot API
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/betfair-bot/backend
+Environment=PATH=/opt/betfair-bot/backend/venv/bin
+ExecStart=/opt/betfair-bot/backend/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target</code></pre>
+
+        <h3>7.3 Pornește serviciul</h3>
+        <pre><code><span class="command">systemctl daemon-reload</span>
+<span class="command">systemctl enable betfair-bot</span>
+<span class="command">systemctl start betfair-bot</span>
+<span class="command">systemctl status betfair-bot</span></code></pre>
+      </div>
+
+      <!-- PASUL 8: VERIFICARE -->
+      <div class="section">
+        <h2><span class="step-number">8</span> Verificare Finală</h2>
+
+        <h3>8.1 Verifică serviciile</h3>
+        <pre><code><span class="comment"># Backend</span>
+<span class="command">systemctl status betfair-bot</span>
+
+<span class="comment"># Nginx</span>
+<span class="command">systemctl status nginx</span>
+
+<span class="comment"># Logs</span>
+<span class="command">journalctl -u betfair-bot -f</span></code></pre>
+
+        <h3>8.2 Testează în browser</h3>
+        <p>Accesează: <code>http://IP_VPS</code></p>
+        <p>Ar trebui să vezi pagina de login a dashboard-ului.</p>
+
+        <div class="success">
+          <strong>✅ Succes!</strong> Dacă vezi dashboard-ul și te poți loga,
+          instalarea e completă!
+        </div>
+      </div>
+
+      <!-- COMENZI UTILE -->
+      <div class="section">
+        <h2><span class="step-number">📋</span> Comenzi Utile</h2>
+
+        <table>
+          <tr>
+            <th>Acțiune</th>
+            <th>Comandă</th>
+          </tr>
+          <tr>
+            <td>Restart bot</td>
+            <td><code>systemctl restart betfair-bot</code></td>
+          </tr>
+          <tr>
+            <td>Vezi logs</td>
+            <td><code>journalctl -u betfair-bot -f</code></td>
+          </tr>
+          <tr>
+            <td>Stop bot</td>
+            <td><code>systemctl stop betfair-bot</code></td>
+          </tr>
+          <tr>
+            <td>Start bot</td>
+            <td><code>systemctl start betfair-bot</code></td>
+          </tr>
+          <tr>
+            <td>Rebuild frontend</td>
+            <td><code>cd /opt/betfair-bot/frontend && npm run build</code></td>
+          </tr>
+          <tr>
+            <td>Update din GitHub</td>
+            <td><code>cd /opt/betfair-bot && git pull</code></td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- STRUCTURA FISIERE -->
+      <div class="section">
+        <h2><span class="step-number">📁</span> Structura Fișierelor</h2>
+
+        <pre
+          class="file-structure"
+        ><code><span class="folder">/opt/betfair-bot/</span>
+├── <span class="folder">backend/</span>
+│   ├── <span class="file">.env</span>                 <span class="comment"># ← Configurări (CREEZI TU)</span>
+│   ├── <span class="file">credentials.json</span>    <span class="comment"># ← Google API (COPIEZI TU)</span>
+│   ├── <span class="file">betfair.crt</span>         <span class="comment"># ← Certificat (COPIEZI TU)</span>
+│   ├── <span class="file">betfair.key</span>         <span class="comment"># ← Cheie privată (COPIEZI TU)</span>
+│   ├── <span class="folder">venv/</span>               <span class="comment"># ← Virtual environment</span>
+│   ├── <span class="folder">app/</span>                <span class="comment"># ← Codul Python</span>
+│   └── <span class="file">requirements.txt</span>
+├── <span class="folder">frontend/</span>
+│   ├── <span class="folder">dist/</span>               <span class="comment"># ← Build-ul (generat de npm)</span>
+│   └── <span class="folder">src/</span>                <span class="comment"># ← Codul Vue.js</span>
+└── <span class="file">deploy.sh</span>              <span class="comment"># ← Script deploy</span></code></pre>
+      </div>
+
+      <!-- TROUBLESHOOTING -->
+      <div class="section">
+        <h2><span class="step-number">🔧</span> Troubleshooting</h2>
+
+        <h3>Eroare: "Betfair connection failed"</h3>
+        <ul>
+          <li>
+            Verifică că <code>betfair.crt</code> și
+            <code>betfair.key</code> sunt în
+            <code>/opt/betfair-bot/backend/</code>
+          </li>
+          <li>Verifică credențialele în <code>.env</code></li>
+          <li>
+            Asigură-te că certificatul e asociat cu contul corect pe Betfair
+          </li>
+        </ul>
+
+        <h3>Eroare: "Google Sheets connection failed"</h3>
+        <ul>
+          <li>Verifică că <code>credentials.json</code> e valid</li>
+          <li>Verifică că spreadsheet-ul e partajat cu Service Account</li>
+          <li>Verifică ID-ul spreadsheet-ului în <code>.env</code></li>
+        </ul>
+
+        <h3>Dashboard nu se încarcă</h3>
+        <ul>
+          <li>Verifică: <code>systemctl status nginx</code></li>
+          <li>Verifică: <code>systemctl status betfair-bot</code></li>
+          <li>Verifică logs: <code>journalctl -u betfair-bot -f</code></li>
+        </ul>
+
+        <h3>Port 80 blocat</h3>
+        <pre><code><span class="command">ufw allow 80</span>
+<span class="command">ufw allow 443</span></code></pre>
+      </div>
+
+      <footer>
+        <p>Clabot © 2024 | Ghid generat automat</p>
+        <p>Pentru suport, contactează dezvoltatorul.</p>
+      </footer>
+    </div>
+  </body>
+</html>

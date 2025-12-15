@@ -199,7 +199,7 @@ function formatCurrency(value: number): string {
       <h2 class="text-lg font-semibold mb-4">Echipă Nouă</h2>
       <form
         @submit.prevent="handleAddTeam"
-        class="grid grid-cols-1 md:grid-cols-2 gap-4"
+        class="grid grid-cols-1 md:grid-cols-3 gap-4"
       >
         <div class="relative">
           <label class="label">Nume Echipă (caută pe Betfair)</label>
@@ -265,7 +265,7 @@ function formatCurrency(value: number): string {
           />
         </div>
 
-        <div class="md:col-span-2 flex justify-end space-x-3">
+        <div class="md:col-span-3 flex justify-end space-x-3">
           <button
             type="button"
             @click="showAddForm = false"
