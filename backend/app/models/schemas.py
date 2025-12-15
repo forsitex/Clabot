@@ -38,7 +38,7 @@ class Team(BaseModel):
     league: str = Field(..., description="League/Competition name")
     country: str = Field(..., description="Country code")
     cumulative_loss: float = Field(default=0.0, ge=0, description="Cumulative loss in RON")
-    last_stake: float = Field(default=100.0, gt=0, description="Last stake placed")
+    last_stake: float = Field(default=0.0, ge=0, description="Last stake placed")
     progression_step: int = Field(default=0, ge=0, description="Current progression step")
     status: TeamStatus = Field(default=TeamStatus.ACTIVE, description="Team status")
     # Statistics
