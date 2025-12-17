@@ -582,11 +582,18 @@ class BotEngine:
 
                     event_id = None
                     matched_event_name = None
+                    # Skip keywords pentru echipe rezerve/tineret
+                    skip_keywords = ["(Res)", "U19", "U20", "U21", "U23", "Women", "Feminin", "II", "B)", "(W)"]
+
                     for ev in events:
                         ev_data = ev.get("event", {})
                         ev_name = ev_data.get("name", "")
                         ev_open_date = ev_data.get("openDate", "")  # "2025-12-04T20:00:00.000Z"
                         ev_date_only = ev_open_date[:10] if ev_open_date else ""  # "2025-12-04"
+
+                        # Skip echipe feminine/tineret
+                        if any(kw in ev_name for kw in skip_keywords):
+                            continue
 
                         # Verificăm dacă numele se potrivește ȘI data e aceeași
                         name_matches = False
@@ -778,11 +785,18 @@ class BotEngine:
             # Find matching event by date
             match_date_only = match_date_str[:10] if match_date_str else ""
             event_id = None
+            # Skip keywords pentru echipe rezerve/tineret
+            skip_keywords = ["(Res)", "U19", "U20", "U21", "U23", "Women", "Feminin", "II", "B)", "(W)"]
+
             for ev in events:
                 ev_data = ev.get("event", {})
                 ev_name = ev_data.get("name", "")
                 ev_open_date = ev_data.get("openDate", "")
                 ev_date_only = ev_open_date[:10] if ev_open_date else ""
+
+                # Skip echipe feminine/tineret
+                if any(kw in ev_name for kw in skip_keywords):
+                    continue
 
                 name_matches = any(st.lower() in ev_name.lower() for st in search_terms)
                 if name_matches and ev_date_only == match_date_only:
@@ -1020,7 +1034,7 @@ class BotEngine:
             logger.info(f"Actualizare meciuri pentru {len(active_teams)} echipe active")
 
             # Skip keywords pentru echipe rezerve/tineret
-            skip_keywords = ["(Res)", "U19", "U21", "U23", "Women", "Feminin", "II", "B)", "(W)"]
+            skip_keywords = ["(Res)", "U19", "U20", "U21", "U23", "Women", "Feminin", "II", "B)", "(W)"]
 
             for team_data in active_teams:
                 team_name = team_data.get("name", "")
