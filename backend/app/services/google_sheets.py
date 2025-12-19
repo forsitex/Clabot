@@ -827,14 +827,21 @@ class GoogleSheetsClient:
                 for row_num in range(2, num_rows + 1):
                     row_values = all_values[row_num - 1]
 
-                    if len(row_values) < 14 or not row_values[13]:
+                    progression_step = int(row_values[8]) if len(row_values) > 8 and row_values[8] else 0
+                    current_total_matches = int(row_values[13]) if len(row_values) > 13 and row_values[13] else 0
+
+                    if progression_step > 0 and current_total_matches == 0:
+                        worksheet.update_cell(row_num, 14, progression_step)
+                        logger.info(f"Migrare: sincronizat total_matches={progression_step} pentru rândul {row_num}")
+                    elif len(row_values) < 14 or not row_values[13]:
                         worksheet.update_cell(row_num, 14, 0)
+
                     if len(row_values) < 15 or not row_values[14]:
                         worksheet.update_cell(row_num, 15, 0)
                     if len(row_values) < 16 or not row_values[15]:
                         worksheet.update_cell(row_num, 16, 0)
 
-                logger.info(f"Migrare Index: populate {num_rows - 1} echipe cu valori 0")
+                logger.info(f"Migrare Index: populate {num_rows - 1} echipe")
 
             self.invalidate_cache("teams")
             logger.info("Migrare Index completă!")
