@@ -846,10 +846,78 @@ class GoogleSheetsClient:
 
             self.invalidate_cache("teams")
             logger.info("Migrare Index completă!")
+
+            self.sync_team_statistics()
+
             return True
 
         except Exception as e:
             logger.error(f"Eroare la migrarea Index: {e}")
+            return False
+
+    def sync_team_statistics(self) -> bool:
+        """
+        Sincronizează statisticile echipelor din Index cu datele din sheet-urile individuale.
+        Citește meciurile WON/LOST din fiecare sheet și actualizează total_matches, matches_won, total_profit.
+        """
+        if not self._connected:
+            return False
+
+        try:
+            index_worksheet = self._spreadsheet.worksheet("Index")
+            all_teams = index_worksheet.get_all_values()
+
+            if len(all_teams) <= 1:
+                return True
+
+            logger.info("Sincronizare statistici echipe din sheet-uri individuale...")
+
+            for row_num in range(2, len(all_teams) + 1):
+                row_values = all_teams[row_num - 1]
+                team_name = row_values[1] if len(row_values) > 1 else ""
+
+                if not team_name:
+                    continue
+
+                try:
+                    team_worksheet = self._spreadsheet.worksheet(team_name)
+                    team_records = team_worksheet.get_all_records()
+
+                    total_matches = 0
+                    matches_won = 0
+                    total_profit = 0.0
+
+                    for record in team_records:
+                        status = record.get("Status", "")
+                        if status == "WON":
+                            total_matches += 1
+                            matches_won += 1
+                            profit = float(record.get("Profit", 0) or 0)
+                            total_profit += profit
+                        elif status == "LOST":
+                            total_matches += 1
+                            stake = float(record.get("Miză", 0) or 0)
+                            total_profit -= stake
+
+                    current_total = int(row_values[13]) if len(row_values) > 13 and row_values[13] else 0
+                    current_won = int(row_values[14]) if len(row_values) > 14 and row_values[14] else 0
+
+                    if total_matches != current_total or matches_won != current_won:
+                        index_worksheet.update_cell(row_num, 14, total_matches)
+                        index_worksheet.update_cell(row_num, 15, matches_won)
+                        index_worksheet.update_cell(row_num, 16, total_profit)
+                        logger.info(f"Sincronizat {team_name}: matches={total_matches}, won={matches_won}, profit={total_profit}")
+
+                except Exception as e:
+                    logger.warning(f"Nu s-a putut sincroniza {team_name}: {e}")
+                    continue
+
+            self.invalidate_cache("teams")
+            logger.info("Sincronizare statistici completă!")
+            return True
+
+        except Exception as e:
+            logger.error(f"Eroare la sincronizarea statisticilor: {e}")
             return False
 
 
