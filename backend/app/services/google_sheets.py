@@ -802,11 +802,12 @@ class GoogleSheetsClient:
                               "cumulative_loss", "last_stake", "progression_step", "status",
                               "created_at", "updated_at", "initial_stake", "total_matches", "matches_won", "total_profit"]
 
-            if len(headers) >= 16 and "total_matches" in headers:
-                logger.info("Migrare Index: coloanele există deja, nu e necesară migrare")
-                return True
+            need_column_creation = len(headers) < 16 or "total_matches" not in headers
 
-            logger.info(f"Migrare Index: găsite {len(headers)} coloane, adaug coloanele lipsă...")
+            if not need_column_creation:
+                logger.info("Migrare Index: coloanele există, verificare sincronizare date...")
+            else:
+                logger.info(f"Migrare Index: găsite {len(headers)} coloane, adaug coloanele lipsă...")
 
             current_cols = worksheet.col_count
             if current_cols < 16:
