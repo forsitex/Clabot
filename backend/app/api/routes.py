@@ -144,8 +144,12 @@ async def get_stats_history(days: int = 30):
                 })
 
         # Sort daily by date, team_profits by profit descending
+        # Exclude datele din viitor (doar până la azi)
+        from datetime import datetime
+        today = datetime.utcnow().strftime("%Y-%m-%d")
+
         daily_sorted = sorted(
-            [{"date": k, **v} for k, v in daily_data.items()],
+            [{"date": k, **v} for k, v in daily_data.items() if k <= today],
             key=lambda x: x["date"]
         )[-days:]
 
