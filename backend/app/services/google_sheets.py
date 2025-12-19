@@ -808,6 +808,11 @@ class GoogleSheetsClient:
 
             logger.info(f"Migrare Index: găsite {len(headers)} coloane, adaug coloanele lipsă...")
 
+            current_cols = worksheet.col_count
+            if current_cols < 16:
+                worksheet.resize(cols=16)
+                logger.info(f"Migrare Index: extins sheet-ul de la {current_cols} la 16 coloane")
+
             if len(headers) < 14 or "total_matches" not in headers:
                 worksheet.update_cell(1, 14, "total_matches")
             if len(headers) < 15 or "matches_won" not in headers:
