@@ -73,6 +73,9 @@ class GoogleSheetsClient:
             self._connected = True
 
             logger.info(f"Conectat la Google Sheets: {self._spreadsheet.title}")
+
+            self.migrate_index_columns()
+
             return True
 
         except Exception as e:
@@ -218,7 +221,7 @@ class GoogleSheetsClient:
             # Save to Index sheet
             headers = ["id", "name", "betfair_id", "sport", "league", "country",
                       "cumulative_loss", "last_stake", "progression_step", "status",
-                      "created_at", "updated_at", "initial_stake"]
+                      "created_at", "updated_at", "initial_stake", "total_matches", "matches_won", "total_profit"]
             worksheet = self._get_or_create_worksheet("Index", headers)
 
             cell = worksheet.find(team["id"])
@@ -231,17 +234,20 @@ class GoogleSheetsClient:
                 team.get("league", ""),
                 team.get("country", ""),
                 team.get("cumulative_loss", 0),
-                team.get("last_stake", 0),  # 0 până la primul pariu
+                team.get("last_stake", 0),
                 team.get("progression_step", 0),
                 team.get("status", "active"),
                 team.get("created_at", datetime.utcnow().isoformat()),
                 datetime.utcnow().isoformat(),
-                team.get("initial_stake", 5)  # Miză inițială per echipă
+                team.get("initial_stake", 5),
+                team.get("total_matches", 0),
+                team.get("matches_won", 0),
+                team.get("total_profit", 0)
             ]
 
             if cell:
                 row_num = cell.row
-                worksheet.update(f"A{row_num}:M{row_num}", [row_data])
+                worksheet.update(f"A{row_num}:P{row_num}", [row_data])
             else:
                 worksheet.append_row(row_data)
 
@@ -771,6 +777,66 @@ class GoogleSheetsClient:
 
         except Exception as e:
             logger.error(f"Eroare la actualizarea progresiei pentru {team_name}: {e}")
+            return False
+
+    def migrate_index_columns(self) -> bool:
+        """
+        Migrează sheet-ul Index pentru a adăuga coloanele lipsă:
+        total_matches (N), matches_won (O), total_profit (P).
+
+        Această funcție verifică dacă coloanele există și le adaugă dacă lipsesc.
+        Pentru echipele existente, populează cu valoarea 0.
+
+        Returns:
+            True dacă migrarea a reușit sau nu era necesară
+        """
+        if not self._connected:
+            logger.warning("Nu sunt conectat la Google Sheets pentru migrare")
+            return False
+
+        try:
+            worksheet = self._spreadsheet.worksheet("Index")
+            headers = worksheet.row_values(1)
+
+            expected_headers = ["id", "name", "betfair_id", "sport", "league", "country",
+                              "cumulative_loss", "last_stake", "progression_step", "status",
+                              "created_at", "updated_at", "initial_stake", "total_matches", "matches_won", "total_profit"]
+
+            if len(headers) >= 16 and "total_matches" in headers:
+                logger.info("Migrare Index: coloanele există deja, nu e necesară migrare")
+                return True
+
+            logger.info(f"Migrare Index: găsite {len(headers)} coloane, adaug coloanele lipsă...")
+
+            if len(headers) < 14 or "total_matches" not in headers:
+                worksheet.update_cell(1, 14, "total_matches")
+            if len(headers) < 15 or "matches_won" not in headers:
+                worksheet.update_cell(1, 15, "matches_won")
+            if len(headers) < 16 or "total_profit" not in headers:
+                worksheet.update_cell(1, 16, "total_profit")
+
+            all_values = worksheet.get_all_values()
+            num_rows = len(all_values)
+
+            if num_rows > 1:
+                for row_num in range(2, num_rows + 1):
+                    row_values = all_values[row_num - 1]
+
+                    if len(row_values) < 14 or not row_values[13]:
+                        worksheet.update_cell(row_num, 14, 0)
+                    if len(row_values) < 15 or not row_values[14]:
+                        worksheet.update_cell(row_num, 15, 0)
+                    if len(row_values) < 16 or not row_values[15]:
+                        worksheet.update_cell(row_num, 16, 0)
+
+                logger.info(f"Migrare Index: populate {num_rows - 1} echipe cu valori 0")
+
+            self.invalidate_cache("teams")
+            logger.info("Migrare Index completă!")
+            return True
+
+        except Exception as e:
+            logger.error(f"Eroare la migrarea Index: {e}")
             return False
 
 
