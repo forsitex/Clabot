@@ -1038,6 +1038,7 @@ class BotEngine:
 
             for team_data in active_teams:
                 team_name = team_data.get("name", "")
+                betfair_id = team_data.get("betfair_id", "")
 
                 try:
                     # Get events from Betfair
@@ -1085,7 +1086,7 @@ class BotEngine:
                                         except:
                                             market_start_time = market_start_time_utc
 
-                                    # Get odds pentru echipa noastră (nu gazda!)
+                                    # Get odds pentru echipa noastră
                                     odds = ""
                                     if market_id:
                                         prices = await betfair_client.list_market_book([market_id])
@@ -1093,28 +1094,32 @@ class BotEngine:
                                             price_runners = prices[0].get("runners", [])
                                             market_runners = market.get("runners", [])
 
-                                            # Găsim runner-ul echipei noastre (verificare EXACTĂ)
+                                            # Găsim runner-ul echipei noastre
+                                            # Dacă avem betfair_id, căutăm după el; altfel după nume exact
                                             team_selection_id = None
                                             for mr in market_runners:
                                                 runner_name = mr.get("runnerName", "")
-                                                if team_name.lower() == runner_name.lower():
+                                                runner_sel_id = str(mr.get("selectionId", ""))
+
+                                                if betfair_id and runner_sel_id == betfair_id:
+                                                    team_selection_id = mr.get("selectionId")
+                                                    break
+                                                elif not betfair_id and team_name.lower() == runner_name.lower():
                                                     team_selection_id = mr.get("selectionId")
                                                     break
 
+                                            # IMPORTANT: Skip meciul dacă echipa noastră NU e găsită
+                                            if not team_selection_id:
+                                                logger.info(f"Skip {event_name} - echipa {team_name} nu e găsită în runners: {[mr.get('runnerName') for mr in market_runners]}")
+                                                continue
+
                                             # Luăm cota pentru echipa noastră
-                                            if team_selection_id:
-                                                for pr in price_runners:
-                                                    if pr.get("selectionId") == team_selection_id:
-                                                        back_prices = pr.get("ex", {}).get("availableToBack", [])
-                                                        if back_prices:
-                                                            odds = back_prices[0].get("price", "")
-                                                        break
-                                            else:
-                                                # Fallback
-                                                if price_runners:
-                                                    back_prices = price_runners[0].get("ex", {}).get("availableToBack", [])
+                                            for pr in price_runners:
+                                                if pr.get("selectionId") == team_selection_id:
+                                                    back_prices = pr.get("ex", {}).get("availableToBack", [])
                                                     if back_prices:
                                                         odds = back_prices[0].get("price", "")
+                                                    break
 
                                     matches_to_add.append({
                                         "start_time": market_start_time,

@@ -210,7 +210,8 @@ async def run_bot_now():
 async def search_teams_betfair(q: str = ""):
     """
     Caută echipe pe Betfair API.
-    Returnează lista de echipe găsite pentru autocomplete.
+    Returnează lista de echipe cu selectionId pentru identificare unică.
+    Format: [{"name": "Real Madrid", "selectionId": "48351"}, ...]
     """
     if len(q) < 3:
         return []
@@ -231,30 +232,51 @@ async def search_teams_betfair(q: str = ""):
             text_query=q
         )
 
-        # Skip keywords pentru echipe rezerve/tineret
         skip_keywords = ["(Res)", "U19", "U20", "U21", "U23", "Women", "Feminin", "II", "B)", "(W)"]
 
-        # Extragem numele unice ale echipelor din evenimente
-        team_names = set()
-        for event in events[:20]:
-            event_name = event.get("event", {}).get("name", "")
+        teams_dict = {}
 
-            # Skip meciuri cu echipe rezerve/tineret
+        for event in events[:20]:
+            event_data = event.get("event", {})
+            event_id = event_data.get("id", "")
+            event_name = event_data.get("name", "")
+
             if any(kw in event_name for kw in skip_keywords):
                 continue
 
-            # Evenimentele sunt "Team A v Team B"
-            if " v " in event_name:
-                parts = event_name.split(" v ")
-                for part in parts:
-                    part = part.strip()
-                    # Filtram doar echipele care contin query-ul
-                    if q.lower() in part.lower():
-                        team_names.add(part)
+            if not event_id:
+                continue
 
-        # Sortam alfabetic si returnam
-        results = sorted(list(team_names))
-        logger.info(f"Search Betfair '{q}': {len(results)} echipe găsite")
+            try:
+                markets = await betfair_client.list_market_catalogue(
+                    event_ids=[event_id],
+                    market_type_codes=["MATCH_ODDS"]
+                )
+
+                if markets:
+                    market = markets[0]
+                    runners = market.get("runners", [])
+
+                    for runner in runners:
+                        runner_name = runner.get("runnerName", "")
+                        selection_id = str(runner.get("selectionId", ""))
+
+                        if any(kw in runner_name for kw in skip_keywords):
+                            continue
+
+                        if q.lower() in runner_name.lower() and runner_name not in teams_dict:
+                            teams_dict[runner_name] = selection_id
+
+            except Exception as e:
+                logger.warning(f"Eroare la preluarea runners pentru {event_name}: {e}")
+                continue
+
+        results = sorted(
+            [{"name": name, "selectionId": sel_id} for name, sel_id in teams_dict.items()],
+            key=lambda x: x["name"]
+        )
+
+        logger.info(f"Search Betfair '{q}': {len(results)} echipe găsite cu selectionId")
         return results
 
     except Exception as e:
@@ -386,30 +408,41 @@ async def create_team(team_create: TeamCreate):
                                         price_runners = prices[0].get("runners", [])
                                         market_runners = market.get("runners", [])
 
-                                        # Găsim runner-ul echipei noastre (verificare EXACTĂ)
+                                        # Găsim runner-ul echipei noastre
+                                        # Dacă avem betfair_id (selectionId), căutăm după el
+                                        # Altfel, căutăm după nume exact
                                         team_selection_id = None
+                                        betfair_id = team.betfair_id
+
                                         for mr in market_runners:
                                             runner_name = mr.get("runnerName", "")
-                                            if team.name.lower() == runner_name.lower():
+                                            runner_sel_id = str(mr.get("selectionId", ""))
+
+                                            if betfair_id and runner_sel_id == betfair_id:
                                                 team_selection_id = mr.get("selectionId")
+                                                logger.info(f"Găsit runner după betfair_id: {runner_name} (ID: {runner_sel_id})")
+                                                break
+                                            elif not betfair_id and team.name.lower() == runner_name.lower():
+                                                team_selection_id = mr.get("selectionId")
+                                                logger.info(f"Găsit runner după nume: {runner_name}")
                                                 break
 
+                                        # IMPORTANT: Skip meciul dacă echipa noastră NU e găsită
+                                        if not team_selection_id:
+                                            logger.info(f"Skip {event_name} - echipa {team.name} nu e găsită în runners: {[mr.get('runnerName') for mr in market_runners]}")
+                                            continue
+
                                         # Luăm cota pentru echipa noastră
-                                        if team_selection_id:
-                                            for pr in price_runners:
-                                                if pr.get("selectionId") == team_selection_id:
-                                                    back_prices = pr.get("ex", {}).get("availableToBack", [])
-                                                    if back_prices:
-                                                        odds = back_prices[0].get("price", "")
-                                                    break
-                                        else:
-                                            # Fallback: dacă nu găsim, luăm primul runner
-                                            if price_runners:
-                                                back_prices = price_runners[0].get("ex", {}).get("availableToBack", [])
+                                        for pr in price_runners:
+                                            if pr.get("selectionId") == team_selection_id:
+                                                back_prices = pr.get("ex", {}).get("availableToBack", [])
                                                 if back_prices:
                                                     odds = back_prices[0].get("price", "")
+                                                break
+
                         except Exception as e:
                             logger.warning(f"Could not get odds for {event_name}: {e}")
+                            continue
 
                     matches.append({
                         "start_time": market_start_time,

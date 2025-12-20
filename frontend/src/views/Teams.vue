@@ -19,6 +19,7 @@ import {
   searchTeamsBetfair,
   updateTeamInitialStake,
   getSettings,
+  type BetfairTeamResult,
 } from "@/services/api";
 import type { Team, TeamCreate } from "@/types";
 
@@ -31,6 +32,7 @@ const defaultInitialStake = ref<number>(5);
 
 const newTeam = ref<TeamCreate>({
   name: "",
+  betfair_id: "",
   sport: "football",
   league: "Auto",
   country: "",
@@ -38,7 +40,7 @@ const newTeam = ref<TeamCreate>({
 });
 
 const searchQuery = ref("");
-const searchResults = ref<string[]>([]);
+const searchResults = ref<BetfairTeamResult[]>([]);
 const isSearching = ref(false);
 const showDropdown = ref(false);
 let searchTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -81,9 +83,10 @@ watch(searchQuery, (newVal) => {
   }, 300);
 });
 
-function selectTeam(teamName: string): void {
-  newTeam.value.name = teamName;
-  searchQuery.value = teamName;
+function selectTeam(team: BetfairTeamResult): void {
+  newTeam.value.name = team.name;
+  newTeam.value.betfair_id = team.selectionId;
+  searchQuery.value = team.name;
   showDropdown.value = false;
 }
 
@@ -110,6 +113,7 @@ async function handleAddTeam(): Promise<void> {
 
   newTeam.value = {
     name: "",
+    betfair_id: "",
     sport: "football",
     league: "Auto",
     country: "",
@@ -227,12 +231,12 @@ function formatCurrency(value: number): string {
           >
             <button
               v-for="team in searchResults"
-              :key="team"
+              :key="team.selectionId"
               type="button"
               class="w-full px-4 py-2 text-left hover:bg-blue-50 focus:bg-blue-50 focus:outline-none"
               @mousedown.prevent="selectTeam(team)"
             >
-              {{ team }}
+              {{ team.name }}
             </button>
           </div>
 
