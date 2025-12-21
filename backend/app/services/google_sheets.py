@@ -254,6 +254,7 @@ class GoogleSheetsClient:
             # Create separate sheet for team
             self._create_team_sheet(team["name"])
 
+            self.invalidate_cache("teams")
             logger.info(f"Echipă salvată: {team['name']}")
             return True
 

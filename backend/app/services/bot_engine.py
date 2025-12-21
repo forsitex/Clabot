@@ -80,10 +80,15 @@ class BotEngine:
                 if not team_name:
                     continue
 
+                # Fix: Convertim betfair_id la string dacă e int
+                betfair_id = team_data.get("betfair_id", "")
+                if betfair_id and not isinstance(betfair_id, str):
+                    betfair_id = str(betfair_id)
+
                 team = Team(
                     id=team_data.get("id", str(uuid4())),
                     name=team_name,
-                    betfair_id=team_data.get("betfair_id", ""),
+                    betfair_id=betfair_id,
                     sport=team_data.get("sport", "football"),
                     league=team_data.get("league", ""),
                     country=team_data.get("country", ""),
@@ -98,6 +103,7 @@ class BotEngine:
                     total_profit=float(team_data.get("total_profit", 0))
                 )
                 teams.append(team)
+                self._teams[team.id] = team
 
             return teams
         except Exception as e:
